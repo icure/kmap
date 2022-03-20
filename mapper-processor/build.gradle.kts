@@ -7,8 +7,23 @@ plugins {
     kotlin("jvm")
 }
 
-group = "com.example"
-version = "1.0-SNAPSHOT"
+buildscript {
+    repositories {
+        mavenCentral()
+        maven { url = uri("https://maven.taktik.be/content/groups/public") }
+    }
+    dependencies {
+        classpath("com.taktik.gradle:gradle-plugin-git-version:2.0.2")
+        classpath("com.taktik.gradle:gradle-plugin-maven-repository:1.0.2")
+    }
+}
+
+apply(plugin = "git-version")
+apply(plugin = "maven-repository")
+val gitVersion: String? by project
+
+group = "io.icure"
+version = gitVersion ?: "0.0.1-SNAPSHOT"
 
 repositories {
     mavenCentral()
