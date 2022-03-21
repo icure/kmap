@@ -19,10 +19,12 @@ kotlin {
 
 dependencies {
     implementation(kotlin("stdlib"))
-    implementation(project(":mapper-processor"))
-    ksp(project(":mapper-processor"))
+    implementation(project(":kmap"))
+    ksp(project(":kmap"))
 
+    implementation(group = "org.jetbrains.kotlin", name = "kotlin-reflect", version = "1.6.10")
     implementation(group = "org.mapstruct", name = "mapstruct", version = "1.3.1.Final")
+    implementation(group = "org.springframework", name = "spring-context", version = "5.3.10")
 }
 
 ksp {

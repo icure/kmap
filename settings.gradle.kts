@@ -10,7 +10,7 @@ pluginManagement {
     }
 }
 
-rootProject.name = "kmap"
+rootProject.name = "kmap-processor"
 
 include(":workload")
-include(":mapper-processor")
+include(":kmap")
