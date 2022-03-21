@@ -19,6 +19,7 @@ import com.google.devtools.ksp.symbol.KSValueParameter
 import com.google.devtools.ksp.symbol.KSVisitorVoid
 import com.google.devtools.ksp.symbol.Modifier
 import com.google.devtools.ksp.validate
+import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.FunSpec
@@ -74,9 +75,13 @@ class MapperProcessor(
                 packageName = packageName,
                 fileName = classDeclaration.simpleName.asString()
             ).apply {
-                val uses = getUses(mapper)
+                val uses = mapper.mapperUses()
                 addType(
-                    TypeSpec.classBuilder(className)
+                    TypeSpec.classBuilder(className).apply {
+                        when (mapper.mapperComponentModel()) {
+                            "spring" -> addAnnotation(ClassName("org.springframework.stereotype", "Service"))
+                        }
+                    }
                         .addSuperinterface(classDeclaration.toClassName())
                         .primaryConstructor(FunSpec.constructorBuilder().apply {
                             uses.forEach {
@@ -139,7 +144,7 @@ class MapperProcessor(
             } else {
                 //Need to make sure that the annotations work
                 val selfUse = classDeclaration.getAllFunctions().find { it.parameters.size == 1 && it.parameters[0].type.toTypeName() == source.first.toTypeName() && it.returnType?.toTypeName() == target.first.toTypeName() }
-                val use = getUses(mapper).flatMap { u ->
+                val use = mapper.mapperUses().flatMap { u ->
                     (u.declaration as? KSClassDeclaration)?.getAllFunctions()?.mapNotNull {
                         it.takeIf { it.parameters.size == 1 && it.parameters[0].type.toTypeName() == source.first.toTypeName() && it.returnType?.toTypeName() == target.first.toTypeName() }
                             ?.let { u to it }
@@ -185,10 +190,15 @@ class MapperProcessor(
             }
         }
 
-        private fun getUses(mapper: KSAnnotation) =
-            mapper.arguments.find { it.name!!.asString() == "uses" }?.let {
+        private fun KSAnnotation.mapperUses() =
+            arguments.find { it.name!!.asString() == "uses" }?.let {
                 (it.value as Collection<KSType>).toList()
             } ?: emptyList()
+
+        private fun KSAnnotation.mapperComponentModel() =
+            arguments.find { it.name!!.asString() == "componentModel" }?.let {
+                it.value?.toString()
+            }
 
         fun mapUsingConstructor(
             param: KSValueParameter,
