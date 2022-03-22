@@ -18,12 +18,11 @@
 package org.taktik.icure.services.external.rest.v1.dto
 
 import org.taktik.icure.services.external.rest.v1.dto.embed.EncryptedDto
-import org.taktik.icure.services.external.rest.v1.dto.embed.TypedValueDto
 
 data class PropertyStubDto(
         val id: String? = null,
         val type: PropertyTypeStubDto? = null,
-        val typedValue: TypedValueDto<*>? = null,
+        val typedValue: String? = null,
         @Deprecated("Remove from list instead") val deletionDate: Long? = null,
         override val encryptedSelf: String? = null
 ) : EncryptedDto

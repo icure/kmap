@@ -23,7 +23,6 @@ import org.mapstruct.Mapper
 import org.mapstruct.Mapping
 import org.mapstruct.Mappings
 import org.taktik.icure.entities.EntityReference
-import org.taktik.icure.entities.base.PropertyStub
 import org.taktik.icure.services.external.rest.v1.dto.EntityReferenceDto
 import org.taktik.icure.services.external.rest.v1.mapper.base.CodeStubMapper
 import org.taktik.icure.services.external.rest.v1.mapper.base.IdentifierMapper

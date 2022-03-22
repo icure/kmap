@@ -33,7 +33,6 @@ data class FormTemplate(
        override val rev: String? = null,
        override val deletionDate: Long? = null,
 
-        val layout: ByteArray? = null,
         var isAttachmentDirty: Boolean = false,
         val name: String? = null,
         //Globally unique and consistent accross all DBs that get their formTemplate from a icure cloud library
@@ -80,8 +79,6 @@ data class FormTemplate(
             "longReport" to (this.longReport ?: other.longReport),
             "reports" to (other.reports + this.reports),
             "layoutAttachmentId" to (this.layoutAttachmentId ?: other.layoutAttachmentId),
-            "layout" to (this.layout?.let { if (it.size >= other.layout?.size ?: 0) it else other.layout }
-                    ?: other.layout)
     )
 
     override fun withIdRev(id: String?, rev: String) = if (id != null) this.copy(id = id, rev = rev) else this.copy(rev = rev)

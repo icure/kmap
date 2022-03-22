@@ -19,18 +19,12 @@
 package org.taktik.icure.entities.base
 
 import org.taktik.icure.entities.embed.Encrypted
-import org.taktik.icure.entities.embed.TypedValue
 import java.io.Serializable
 
 data class PropertyStub(
         val id: String? = null,
         val type: PropertyTypeStub? = null,
-        val typedValue: TypedValue<*>? = null,
+        val typedValue: String? = null,
         @Deprecated("Remove from list instead")val deletionDate: Long? = null,
         override val encryptedSelf: String? = null
-) : Serializable, Encrypted {
-    @JsonIgnore
-    fun <T> getValue(): T? {
-        return (typedValue?.getValue<Any>()?.let { it as? T })
-    }
-}
+) : Serializable, Encrypted

@@ -66,6 +66,46 @@ private fun KSAnnotation.mappingsMappings() =
         }
     } ?: emptyList()
 
+
+private fun KSClassDeclaration.isCollection() = this.isList() || this.isSet() || this.isSortedSet()
+
+private tailrec fun KSClassDeclaration.isList(): Boolean {
+    val qn = this.qualifiedName?.asString()
+    return if (qn == "java.util.List" || qn == "kotlin.collections.List") true else {
+        val parentDecl = (parentDeclaration as? KSClassDeclaration)
+        @Suppress("IfThenToElvis")
+        if (parentDecl == null) false else parentDecl.isList()
+    }
+}
+
+private tailrec fun KSClassDeclaration.isSet(): Boolean {
+    val qn = this.qualifiedName?.asString()
+    return if (qn == "java.util.Set" || qn == "kotlin.collections.Set") true else {
+        val parentDecl = (parentDeclaration as? KSClassDeclaration)
+        @Suppress("IfThenToElvis")
+        if (parentDecl == null) false else parentDecl.isSet()
+    }
+}
+
+private tailrec fun KSClassDeclaration.isSortedSet(): Boolean {
+    val qn = this.qualifiedName?.asString()
+    return if (qn == "java.util.SortedSet") true else {
+        val parentDecl = (parentDeclaration as? KSClassDeclaration)
+        @Suppress("IfThenToElvis")
+        if (parentDecl == null) false else parentDecl.isSortedSet()
+    }
+}
+
+
+private tailrec fun KSClassDeclaration.isMap(): Boolean {
+    val qn = this.qualifiedName?.asString()
+    return if (qn == "java.util.Map" || qn == "kotlin.collections.Map") true else {
+        val parentDecl = (parentDeclaration as? KSClassDeclaration)
+        @Suppress("IfThenToElvis")
+        if (parentDecl == null) false else parentDecl.isMap()
+    }
+}
+
 @KotlinPoetKspPreview
 @KspExperimental
 class MapperProcessor(
@@ -87,6 +127,7 @@ class MapperProcessor(
                         try {
                             it.accept(MapperVisitor(it.mapperAnnotation()), Unit); null
                         } catch (e: ShouldDeferException) {
+                            logger.warn("Deferring processing of ${it.qualifiedName?.asString()}")
                             it
                         }
                     }
@@ -98,7 +139,6 @@ class MapperProcessor(
         override fun visitClassDeclaration(classDeclaration: KSClassDeclaration, data: Unit) {
             val packageName = classDeclaration.containingFile!!.packageName.asString()
             val className = "${classDeclaration.simpleName.asString()}Impl"
-
             val fileSpec = FileSpec.builder(
                 packageName = packageName,
                 fileName = classDeclaration.simpleName.asString()
@@ -132,7 +172,7 @@ class MapperProcessor(
                                                 it.declaration.packageName.asString() == "org.mapstruct" && it.declaration.simpleName.asString() == "Mappings"
                                             }
                                         }
-                                        logger.warn("Implementing mapper for map(${param.type.toTypeName()}) -> ${rt.toClassName()}")
+                                        logger.info("Implementing mapper for map(${param.type.toTypeName()}) -> ${rt.toClassName()}")
 
                                         addFunction(
                                             FunSpec.builder(funDecl.simpleName.asString())
@@ -175,24 +215,25 @@ class MapperProcessor(
                 add("it")
             } else {
                 //Need to make sure that the annotations work
-                val selfUse = classDeclaration.getAllFunctions()
-                    .find { it.parameters.size == 1 && it.parameters[0].type.toTypeName() == source.first.toTypeName() && it.returnType?.toTypeName() == target.first.toTypeName() }
-                val use = mapper.mapperUses().flatMap { u ->
-                    (u.declaration as? KSClassDeclaration)?.getAllFunctions()?.mapNotNull {
-                        try {
-                            it.takeIf { it.parameters.size == 1 && (
-                                    it.parameters[0].type.toTypeName() == source.first.toTypeName() ||
-                                            it.parameters[0].type.toTypeName().copy(true) == source.first.toTypeName()
-                            ) && (
-                                    it.returnType?.toTypeName() == target.first.toTypeName() ||
-                                            it.returnType?.toTypeName()?.copy(true) == target.first.toTypeName()
-                                    )}
-                                ?.let { u to it }
-                        } catch (e: java.lang.IllegalStateException) {
-                            throw ShouldDeferException()
-                        }
-                    }?.toList() ?: emptyList()
-                }.firstOrNull()
+                val sourceTypeName = source.first.toTypeName(source.second)
+                val targetTypeName = target.first.toTypeName(target.second)
+
+                val selfUseFns = classDeclaration.getAllFunctions().filter { it.qualifiedName?.asString() != "equals" && it.parameters.size == 1 }
+                val usesFns = mapper.mapperUses().flatMap { u -> (u.declaration as? KSClassDeclaration)?.getAllFunctions()
+                    ?.filter { it.qualifiedName?.asString() != "equals" && it.parameters.size == 1 }?.map { u to it }?.toList() ?: emptyList() }
+
+                val selfUse = selfUseFns.find {
+                            it.parameters[0].validate() &&
+                            it.returnType?.validate() == true &&
+                            it.parameters[0].type.toTypeName() == sourceTypeName &&
+                            it.returnType?.toTypeName() == targetTypeName
+                }
+                val use = usesFns.find { (_, fn) ->
+                            fn.parameters[0].validate() &&
+                            fn.returnType?.validate() == true &&
+                            fn.parameters[0].type.toTypeName() == sourceTypeName &&
+                            fn.returnType?.toTypeName() == targetTypeName
+                }
 
                 val sourceDecl = source.second.declaration as KSClassDeclaration
                 val targetDecl = target.second.declaration as KSClassDeclaration
@@ -217,9 +258,18 @@ class MapperProcessor(
                                 classDeclaration
                             )
                         )
+                    sourceDecl.isCollection() && targetDecl.isSortedSet() ->
+                        add(
+                            "it.map { %L }.toSortedSet()", getTypeConverter(
+                                source.first.element!!.typeArguments.first().type!!.let { it to it.resolve() },
+                                target.first.element!!.typeArguments.first().type!!.let { it to it.resolve() },
+                                mapper,
+                                classDeclaration
+                            )
+                        )
                     sourceDecl.isMap() && targetDecl.isMap() ->
                         add(
-                            "it.map { (k,v) -> k?.let { %L } to v?.let { %L } }.toMap()",
+                            "it.map { (k,v) -> Pair(k?.let { %L }, v?.let { %L }) }.toMap()",
                             getTypeConverter(
                                 source.first.element!!.typeArguments[0].type!!.let { it to it.resolve() },
                                 target.first.element!!.typeArguments[0].type!!.let { it to it.resolve() },
@@ -233,9 +283,29 @@ class MapperProcessor(
                             )
                         )
                     sourceDecl.classKind == ClassKind.ENUM_CLASS && targetDecl.classKind == ClassKind.ENUM_CLASS ->
-                        add("%T.valueOf(it.value)", targetDecl.toClassName())
+                        add("%T.valueOf(it.name)", targetDecl.toClassName())
+                    source.second.isMarkedNullable && target.second.isMarkedNullable -> {
+                        add("it?.let { %L }", getTypeConverter(
+                            source.copy(second = source.second.makeNotNullable()), target.copy(second = target.second.makeNotNullable()), mapper, classDeclaration
+                        ))
+                    }
+                    target.second.isMarkedNullable -> {
+                        add("%L", getTypeConverter(
+                            source, target.copy(second = target.second.makeNotNullable()), mapper, classDeclaration
+                        ))
+                    }
                     else -> {
-                        logger.error("No mapper was found for ${source.first.toTypeName()} -> ${target.first.toTypeName()} in class ${classDeclaration.toClassName()}")
+                        val mapperClassName = classDeclaration.toClassName()
+                        val missingSelfUseFns = selfUseFns.filter { !it.validate() || it.returnType?.validate() == false }.map { "this" to it.qualifiedName?.asString() }.toList()
+                        val missingUsesFns = usesFns.filter { (_, fn) -> !fn.validate() || fn.returnType?.validate() == false }.map { (u, fn) -> u.toTypeName().toString() to fn.qualifiedName?.asString() }.toList()
+                        if (missingSelfUseFns.isNotEmpty() || missingUsesFns.isNotEmpty()) {
+                            logger.warn("No mapper was found for $sourceTypeName -> $targetTypeName in class $mapperClassName during round, ${
+                                (missingSelfUseFns + missingUsesFns).joinToString(",") { (a, b) -> "$a.$b" }
+                            } do not validate")
+                            throw ShouldDeferException()
+                        } else {
+                            logger.error("No mapper was found for $sourceTypeName -> $targetTypeName in class $mapperClassName")
+                        }
                     }
                 }
             }
@@ -267,23 +337,28 @@ class MapperProcessor(
                     candidates.firstOrNull()?.let {
                         val cType = it.type.resolve()
                         val pType = p.type.resolve()
-                        logger.warn("  -->  Mapping constructor parameter ${p.name!!.asString()}")
-                        try {
-                            if (!it.type.validate() || !p.type.validate()) { throw ShouldDeferException() }
-                            val cTypeName = it.type.toTypeName()
-                            val pTypeName = p.type.toTypeName()
-                            if (cTypeName == pTypeName) {
-                                "${source.name?.asString()}.${it}"
-                            } else {
-                                val typeConverter: CodeBlock =
-                                    getTypeConverter(it.type to cType, p.type to pType, mapper, classDeclaration)
-                                "${source.name?.asString()}.${it}?.let { $typeConverter }"
-                            }
-                        } catch (e:java.lang.IllegalStateException) {
+
+                        if (!it.type.validate()) {
+                            logger.warn("Deferring parameter, cannot resolve ${it.qualifiedName?.asString()}")
                             throw ShouldDeferException()
                         }
+                        if (!p.type.validate()) {
+                            logger.warn("Deferring parameter, cannot resolve ${p.name?.asString()}")
+                            throw ShouldDeferException()
+                        }
+
+                        val cTypeName = it.type.toTypeName(cType)
+                        val pTypeName = p.type.toTypeName(pType)
+
+                        if (cTypeName == pTypeName) {
+                            "${source.name?.asString()}.${it}"
+                        } else {
+                            val typeConverter: CodeBlock =
+                                getTypeConverter(it.type to cType, p.type to pType, mapper, classDeclaration)
+                            "${source.name?.asString()}.${it}?.let { $typeConverter }"
+                        }
                     }?.let { p.name!!.asString() to it }
-                        ?: null.also { logger.error("Cannot find a counterpart for ${p.name?.asString()}") }
+                        ?: null.also { logger.error("Cannot find a counterpart for ${p.name?.asString()} when mapping from ${sourceClass.toClassName()} to ${targetClass.toClassName()}") }
                 }
             }
 
@@ -294,36 +369,6 @@ class MapperProcessor(
                 }
             )
         }
-    }
-
-}
-
-private fun KSClassDeclaration.isCollection() = this.isList() || this.isSet()
-
-private tailrec fun KSClassDeclaration.isList(): Boolean {
-    val qn = this.qualifiedName?.asString()
-    return if (qn == "java.util.List" || qn == "kotlin.collections.List") true else {
-        val parentDecl = (parentDeclaration as? KSClassDeclaration)
-        @Suppress("IfThenToElvis")
-        if (parentDecl == null) false else parentDecl.isList()
-    }
-}
-
-private tailrec fun KSClassDeclaration.isSet(): Boolean {
-    val qn = this.qualifiedName?.asString()
-    return if (qn == "java.util.Set" || qn == "kotlin.collections.Set") true else {
-        val parentDecl = (parentDeclaration as? KSClassDeclaration)
-        @Suppress("IfThenToElvis")
-        if (parentDecl == null) false else parentDecl.isSet()
-    }
-}
-
-private tailrec fun KSClassDeclaration.isMap(): Boolean {
-    val qn = this.qualifiedName?.asString()
-    return if (qn == "java.util.Map" || qn == "kotlin.collections.Map") true else {
-        val parentDecl = (parentDeclaration as? KSClassDeclaration)
-        @Suppress("IfThenToElvis")
-        if (parentDecl == null) false else parentDecl.isMap()
     }
 }
 

@@ -20,7 +20,6 @@ package org.taktik.icure.entities
 import org.taktik.icure.entities.base.StoredDocument
 import org.taktik.icure.entities.embed.Encrypted
 import org.taktik.icure.entities.embed.RevisionInfo
-import org.taktik.icure.entities.embed.TypedValue
 import org.taktik.icure.utils.DynamicInitializer
 import org.taktik.icure.utils.invoke
 
@@ -30,7 +29,7 @@ data class Property(
        override val deletionDate: Long? = null,
 
         val type: PropertyType? = null,
-        val typedValue: TypedValue<*>? = null,
+        val typedValue: String? = null,
         override val encryptedSelf: String? = null,
 
        override val revisionsInfo: List<RevisionInfo>? = emptyList(),
@@ -44,11 +43,6 @@ data class Property(
             "type" to (this.type ?: other.type),
             "typedValue" to (this.typedValue ?: other.typedValue)
     )
-
-    @JsonIgnore
-    fun <T> getValue(): T? {
-        return (typedValue?.getValue<Any>()?.let { it as? T })
-    }
 
     override fun withIdRev(id: String?, rev: String) = if (id != null) this.copy(id = id, rev = rev) else this.copy(rev = rev)
     override fun withDeletionDate(deletionDate: Long?) = this.copy(deletionDate = deletionDate)

@@ -17,8 +17,6 @@
  */
 package org.taktik.icure.services.external.rest.v1.dto
 
-import org.taktik.icure.constants.String
-
 data class PropertyTypeStubDto(
         val identifier: String? = null,
         val type: String? = null

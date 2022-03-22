@@ -17,7 +17,6 @@
  */
 package org.taktik.icure.entities
 
-import org.taktik.icure.constants.Users
 import org.taktik.icure.entities.base.PropertyStub
 import org.taktik.icure.entities.base.StoredDocument
 import org.taktik.icure.entities.embed.DelegationTag
@@ -75,12 +74,10 @@ data class User(
         override val properties: Set<PropertyStub> = emptySet(),
         val roles: Set<String> = emptySet(),
         override val permissions: Set<Permission> = emptySet(),
-        val type: Users.Type? = null,
-        val status: Users.Status? = null,
         val login: String? = null,
         val passwordHash: String? = null,
         val secret: String? = null,
-       val use2fa: Boolean? = null,
+        val use2fa: Boolean? = null,
         val groupId: String? = null,
         val healthcarePartyId: String? = null,
         val patientId: String? = null,
@@ -119,8 +116,6 @@ data class User(
             "name" to (this.name ?: other.name),
             "properties" to (other.properties + this.properties),
             "permissions" to (other.permissions + this.permissions),
-            "type" to (this.type ?: other.type),
-            "status" to (this.status ?: other.status),
             "login" to (this.login ?: other.login),
             "passwordHash" to (this.passwordHash ?: other.passwordHash),
             "secret" to (this.secret ?: other.secret),
@@ -140,7 +135,5 @@ data class User(
 
     override fun withIdRev(id: String?, rev: String) = if (id != null) this.copy(id = id, rev = rev) else this.copy(rev = rev)
     override fun withDeletionDate(deletionDate: Long?) = this.copy(deletionDate = deletionDate)
-
-    @JsonIgnore
     override fun getParents(): Set<String> = this.roles
 }

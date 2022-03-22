@@ -16,23 +16,29 @@
  *     <https://www.gnu.org/licenses/>.
  */
 
-package org.taktik.icure.services.external.rest.v1.mapper.samv2
+package org.taktik.icure.services.external.rest.v1.mapper.base
 
 import org.mapstruct.InjectionStrategy
 import org.mapstruct.Mapper
 import org.mapstruct.Mapping
 import org.mapstruct.Mappings
-import org.taktik.icure.entities.samv2.ProductId
-import org.taktik.icure.services.external.rest.v1.dto.samv2.ProductIdDto
+import org.taktik.icure.entities.Property
+import org.taktik.icure.entities.PropertyType
+import org.taktik.icure.entities.base.PropertyStub
+import org.taktik.icure.entities.base.PropertyTypeStub
+import org.taktik.icure.services.external.rest.v1.dto.PropertyStubDto
+import org.taktik.icure.services.external.rest.v1.dto.PropertyTypeStubDto
 
 @Mapper(componentModel = "spring", uses = [], injectionStrategy = InjectionStrategy.CONSTRUCTOR)
-interface ProductIdMapper {
+interface PropertyStubMapper {
     @Mappings(
             Mapping(target = "attachments", ignore = true),
             Mapping(target = "revHistory", ignore = true),
             Mapping(target = "conflicts", ignore = true),
             Mapping(target = "revisionsInfo", ignore = true)
             )
-	fun map(productIdDto: ProductIdDto): ProductId
-	fun map(productId: ProductId):ProductIdDto
+	fun map(propertyDto: PropertyStubDto):PropertyStub
+	fun map(property: PropertyStub):PropertyStubDto
+    fun map(propertyTypeDto: PropertyTypeStubDto):PropertyTypeStub
+    fun map(propertyType: PropertyTypeStub): PropertyTypeStubDto
 }

@@ -18,8 +18,6 @@
 package org.taktik.icure.services.external.rest.v1.dto
 
 
-import org.taktik.icure.constants.PropertyTypeScope
-import org.taktik.icure.constants.String
 import org.taktik.icure.services.external.rest.v1.dto.base.StoredDocumentDto
 
 data class PropertyTypeDto(
@@ -29,7 +27,6 @@ data class PropertyTypeDto(
 
         val identifier: String? = null,
         val type: String? = null,
-        val scope: PropertyTypeScope? = null,
         val unique: Boolean = false,
         val editor: String? = null,
         val localized: Boolean = false

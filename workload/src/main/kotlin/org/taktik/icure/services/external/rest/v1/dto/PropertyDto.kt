@@ -19,7 +19,6 @@ package org.taktik.icure.services.external.rest.v1.dto
 
 import org.taktik.icure.services.external.rest.v1.dto.base.StoredDocumentDto
 import org.taktik.icure.services.external.rest.v1.dto.embed.EncryptedDto
-import org.taktik.icure.services.external.rest.v1.dto.embed.TypedValueDto
 
 data class PropertyDto(
         override val id: String,
@@ -27,7 +26,7 @@ data class PropertyDto(
         override val deletionDate: Long? = null,
 
         val type: PropertyTypeDto? = null,
-        val typedValue: TypedValueDto<*>? = null,
+        val typedValue: String? = null,
         override val encryptedSelf: String? = null
 ) : StoredDocumentDto, EncryptedDto {
     override fun withIdRev(id: String?, rev: String) = if (id != null) this.copy(id = id, rev = rev) else this.copy(rev = rev)
