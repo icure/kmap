@@ -12,6 +12,7 @@ import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSAnnotation
 import com.google.devtools.ksp.symbol.KSClassDeclaration
+import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.google.devtools.ksp.symbol.KSPropertyDeclaration
 import com.google.devtools.ksp.symbol.KSType
 import com.google.devtools.ksp.symbol.KSTypeReference
@@ -25,6 +26,7 @@ import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.PropertySpec
+import com.squareup.kotlinpoet.TypeName
 import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.buildCodeBlock
 import com.squareup.kotlinpoet.ksp.KotlinPoetKspPreview
@@ -214,7 +216,6 @@ class MapperProcessor(
             if (source.second == target.second) {
                 add("it")
             } else {
-                //Need to make sure that the annotations work
                 val sourceTypeName = source.first.toTypeName(source.second)
                 val targetTypeName = target.first.toTypeName(target.second)
 
@@ -223,16 +224,10 @@ class MapperProcessor(
                     ?.filter { it.qualifiedName?.asString() != "equals" && it.parameters.size == 1 }?.map { u to it }?.toList() ?: emptyList() }
 
                 val selfUse = selfUseFns.find {
-                            it.parameters[0].validate() &&
-                            it.returnType?.validate() == true &&
-                            it.parameters[0].type.toTypeName() == sourceTypeName &&
-                            it.returnType?.toTypeName() == targetTypeName
+                    isValidMappingFunction(it, sourceTypeName, targetTypeName)
                 }
                 val use = usesFns.find { (_, fn) ->
-                            fn.parameters[0].validate() &&
-                            fn.returnType?.validate() == true &&
-                            fn.parameters[0].type.toTypeName() == sourceTypeName &&
-                            fn.returnType?.toTypeName() == targetTypeName
+                    isValidMappingFunction(fn, sourceTypeName, targetTypeName)
                 }
 
                 val sourceDecl = source.second.declaration as KSClassDeclaration
@@ -310,6 +305,15 @@ class MapperProcessor(
                 }
             }
         }
+
+        private fun isValidMappingFunction(
+            it: KSFunctionDeclaration,
+            sourceTypeName: TypeName,
+            targetTypeName: TypeName
+        ) = it.parameters[0].validate() &&
+                it.returnType?.validate() == true &&
+                it.parameters[0].type.toTypeName() == sourceTypeName &&
+                it.returnType?.toTypeName() == targetTypeName
 
         fun mapUsingConstructor(
             source: KSValueParameter,
