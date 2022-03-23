@@ -13,7 +13,6 @@ import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSAnnotation
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
-import com.google.devtools.ksp.symbol.KSPropertyDeclaration
 import com.google.devtools.ksp.symbol.KSType
 import com.google.devtools.ksp.symbol.KSTypeReference
 import com.google.devtools.ksp.symbol.KSValueParameter
@@ -51,6 +50,7 @@ private fun KSClassDeclaration.mapperAnnotation() = annotations.find {
 
 private fun KSAnnotation.mapperUses() =
     arguments.find { it.name!!.asString() == "uses" }?.let {
+        @Suppress("UNCHECKED_CAST")
         (it.value as Collection<KSType>).toList()
     } ?: emptyList()
 
@@ -61,6 +61,7 @@ private fun KSAnnotation.mapperComponentModel() =
 
 private fun KSAnnotation.mappingsMappings() =
     arguments.find { it.name!!.asString() == "value" }?.let {
+        @Suppress("UNCHECKED_CAST")
         (it.value as List<KSAnnotation>).toList().map {
             Mapping(
                 target = it.arguments.find { it.name?.asString() == "target" }?.value as? String,
@@ -361,8 +362,12 @@ class MapperProcessor(
                 ?: throw IllegalStateException("Return type should be a Class")
             val targetClass = (target.declaration as? KSClassDeclaration)
                 ?: throw IllegalStateException("Return type should be a Class")
-            val primaryConstructorParameters = targetClass.primaryConstructor!!.parameters
-            val assignments = primaryConstructorParameters.mapNotNull { constructorParameter ->
+            val primaryConstructor = targetClass.primaryConstructor
+            if (primaryConstructor == null) {
+                logger.error("${targetClass.qualifiedName?.asString()} does not have a primary constructor.")
+                return@buildCodeBlock
+            }
+            val assignments = primaryConstructor.parameters.mapNotNull { constructorParameter ->
                 val mapping = mappings?.mappingsMappings()?.find { it.target == constructorParameter.name?.asString() }
                 if (mapping != null && (mapping.ignore || mapping.expression?.isNotEmpty() == true)) {
                     when {
@@ -385,7 +390,8 @@ class MapperProcessor(
                     val candidates = sourceClass.getAllProperties()
                         .filter { it.simpleName.asString() == sourcePropertyName }.toList()
 
-                    val fallBackOnSourceParameterType = source.type.takeIf { candidates.isEmpty() && sourcePropertyName == source.name?.asString() }
+                    val fallBackOnSourceParameterType =
+                        source.type.takeIf { candidates.isEmpty() && sourcePropertyName == source.name?.asString() }
 
                     candidates.firstOrNull().let { property ->
                         val sourceType = property?.type ?: fallBackOnSourceParameterType
@@ -407,11 +413,11 @@ class MapperProcessor(
                             val cTypeName = sourceType.toTypeName(cType)
                             val pTypeName = constructorParameter.type.toTypeName(pType)
 
-                            val prefix = listOfNotNull(source.name?.asString(),property).joinToString(".")
+                            val prefix = listOfNotNull(source.name?.asString(), property).joinToString(".")
                             val nullMarker = "".takeIf { cType.nullability == Nullability.NOT_NULL } ?: "?"
 
                             if (cTypeName == pTypeName) {
-                                "$prefix"
+                                prefix
                             } else {
                                 val typeConverter: CodeBlock =
                                     getTypeConverter(
@@ -442,8 +448,8 @@ class MapperProcessor(
 @KspExperimental
 class MapperProcessorProvider : SymbolProcessorProvider {
     override fun create(
-        env: SymbolProcessorEnvironment
+        environment: SymbolProcessorEnvironment
     ): SymbolProcessor {
-        return MapperProcessor(env.codeGenerator, env.logger)
+        return MapperProcessor(environment.codeGenerator, environment.logger)
     }
 }
