@@ -35,6 +35,7 @@ import com.squareup.kotlinpoet.ksp.toTypeName
 import io.icure.kmap.exception.ShouldDeferException
 import io.icure.kmap.option.Mapping
 import java.io.OutputStream
+import java.lang.Exception
 import java.util.*
 
 fun OutputStream.appendText(str: String) {
@@ -215,7 +216,7 @@ class MapperProcessor(
         ): CodeBlock = buildCodeBlock {
             if (source.second == target.second) {
                 add("it")
-            } else {
+            } else try {
                 val sourceTypeName = source.first.toTypeName(source.second)
                 val targetTypeName = target.first.toTypeName(target.second)
 
@@ -302,6 +303,16 @@ class MapperProcessor(
                             logger.error("No mapper was found for $sourceTypeName -> $targetTypeName in class $mapperClassName")
                         }
                     }
+                }
+            } catch(e:Exception) {
+                try {
+                    val mapperClassName = classDeclaration.toClassName()
+                    val sourceTypeName = source.first.toTypeName(source.second)
+                    val targetTypeName = target.first.toTypeName(target.second)
+
+                    logger.error("An error occurred while trying to get converter: $sourceTypeName -> $targetTypeName in class $mapperClassName : ${e}")
+                } catch(e:Exception) {
+                    logger.error("Internal error in getTypeConverter")
                 }
             }
         }
