@@ -71,7 +71,7 @@ private fun KSAnnotation.mappingsMappings() =
     } ?: emptyList()
 
 
-private fun KSClassDeclaration.isCollection() = this.isList() || this.isSet() || this.isSortedSet()
+private fun KSClassDeclaration.isCollection() = this.isList() || this.isMutableList() || this.isSet() || this.isMutableSet() || this.isSortedSet()
 
 private tailrec fun KSClassDeclaration.isList(): Boolean {
     val qn = this.qualifiedName?.asString()
@@ -82,12 +82,31 @@ private tailrec fun KSClassDeclaration.isList(): Boolean {
     }
 }
 
+private tailrec fun KSClassDeclaration.isMutableList(): Boolean {
+    val qn = this.qualifiedName?.asString()
+    return if (qn == "kotlin.collections.MutableList") true else {
+        val parentDecl = (parentDeclaration as? KSClassDeclaration)
+        @Suppress("IfThenToElvis")
+        if (parentDecl == null) false else parentDecl.isMutableList()
+    }
+}
+
+
 private tailrec fun KSClassDeclaration.isSet(): Boolean {
     val qn = this.qualifiedName?.asString()
     return if (qn == "java.util.Set" || qn == "kotlin.collections.Set") true else {
         val parentDecl = (parentDeclaration as? KSClassDeclaration)
         @Suppress("IfThenToElvis")
         if (parentDecl == null) false else parentDecl.isSet()
+    }
+}
+
+private tailrec fun KSClassDeclaration.isMutableSet(): Boolean {
+    val qn = this.qualifiedName?.asString()
+    return if (qn == "java.util.Set" || qn == "kotlin.collections.Set") true else {
+        val parentDecl = (parentDeclaration as? KSClassDeclaration)
+        @Suppress("IfThenToElvis")
+        if (parentDecl == null) false else parentDecl.isMutableSet()
     }
 }
 
@@ -107,6 +126,15 @@ private tailrec fun KSClassDeclaration.isMap(): Boolean {
         val parentDecl = (parentDeclaration as? KSClassDeclaration)
         @Suppress("IfThenToElvis")
         if (parentDecl == null) false else parentDecl.isMap()
+    }
+}
+
+private tailrec fun KSClassDeclaration.isMutableMap(): Boolean {
+    val qn = this.qualifiedName?.asString()
+    return if (qn == "java.util.Map" || qn == "kotlin.collections.Map") true else {
+        val parentDecl = (parentDeclaration as? KSClassDeclaration)
+        @Suppress("IfThenToElvis")
+        if (parentDecl == null) false else parentDecl.isMutableMap()
     }
 }
 
@@ -246,9 +274,27 @@ class MapperProcessor(
                                 classDeclaration
                             )
                         )
+                    sourceDecl.isCollection() && targetDecl.isMutableList() ->
+                        add(
+                            "it.map { %L }.toMutableList()", getTypeConverter(
+                                source.first.element!!.typeArguments.first().type!!.let { it to it.resolve() },
+                                target.first.element!!.typeArguments.first().type!!.let { it to it.resolve() },
+                                mapper,
+                                classDeclaration
+                            )
+                        )
                     sourceDecl.isCollection() && targetDecl.isSet() ->
                         add(
                             "it.map { %L }.toSet()", getTypeConverter(
+                                source.first.element!!.typeArguments.first().type!!.let { it to it.resolve() },
+                                target.first.element!!.typeArguments.first().type!!.let { it to it.resolve() },
+                                mapper,
+                                classDeclaration
+                            )
+                        )
+                    sourceDecl.isCollection() && targetDecl.isMutableSet() ->
+                        add(
+                            "it.map { %L }.toMutableSet()", getTypeConverter(
                                 source.first.element!!.typeArguments.first().type!!.let { it to it.resolve() },
                                 target.first.element!!.typeArguments.first().type!!.let { it to it.resolve() },
                                 mapper,
@@ -279,6 +325,22 @@ class MapperProcessor(
                                 classDeclaration
                             )
                         )
+                    sourceDecl.isMap() && targetDecl.isMutableMap() ->
+                        add(
+                            "it.map { (k,v) -> Pair(k?.let { %L }, v?.let { %L }) }.toMap().toMutableMap()",
+                            getTypeConverter(
+                                source.first.element!!.typeArguments[0].type!!.let { it to it.resolve() },
+                                target.first.element!!.typeArguments[0].type!!.let { it to it.resolve() },
+                                mapper,
+                                classDeclaration
+                            ), getTypeConverter(
+                                source.first.element!!.typeArguments[1].type!!.let { it to it.resolve() },
+                                target.first.element!!.typeArguments[1].type!!.let { it to it.resolve() },
+                                mapper,
+                                classDeclaration
+                            )
+                        )
+
                     sourceDecl.classKind == ClassKind.ENUM_CLASS && targetDecl.classKind == ClassKind.ENUM_CLASS ->
                         add("%T.valueOf(it.name)", targetDecl.toClassName())
                     source.second.isMarkedNullable && target.second.isMarkedNullable -> {
