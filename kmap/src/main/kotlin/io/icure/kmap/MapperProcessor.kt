@@ -65,6 +65,7 @@ private fun KSAnnotation.mappingsMappings() =
                 target = it.arguments.find { it.name?.asString() == "target" }?.value as? String,
                 source = it.arguments.find { it.name?.asString() == "source" }?.value as? String,
                 ignore = it.arguments.find { it.name?.asString() == "ignore" }?.value as? Boolean ?: false,
+                expression = it.arguments.find { it.name?.asString() == "expression" }?.value as? String,
                 )
         }
     } ?: emptyList()
@@ -340,8 +341,21 @@ class MapperProcessor(
             val parameters = targetClass.primaryConstructor!!.parameters
 
             val assignments = parameters.mapNotNull { p ->
-                if (mappings?.mappingsMappings()?.any { it.target == p.name?.asString() && it.ignore } == true) {
-                    null
+                val mapping = mappings?.mappingsMappings()?.find { it.target == p.name?.asString() }
+                if (mapping != null && (mapping.ignore || mapping.expression != null)) {
+                    when {
+                        mapping.ignore -> null
+                        mapping.expression != null -> {
+                            val trimmed = mapping.expression.trim()
+                            if (trimmed.startsWith("kotlin(")) {
+                                mapping.target!! to trimmed.replace("""kotlin\((.+)\)""".toRegex(), "$1")
+                            } else {
+                                logger.error("Bad expression format for ${mapping.target} when mapping from ${sourceClass.toClassName()} to ${targetClass.toClassName()}")
+                                null
+                            }
+                        }
+                        else -> null
+                    }
                 } else {
                     val sourceName = p.name?.asString()?.let { t ->
                         mappings?.mappingsMappings()?.find { it.target == t && it.source != null }?.source ?: t
