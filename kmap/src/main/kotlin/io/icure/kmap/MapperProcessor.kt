@@ -132,7 +132,7 @@ private tailrec fun KSClassDeclaration.isMap(): Boolean {
 
 private tailrec fun KSClassDeclaration.isMutableMap(): Boolean {
     val qn = this.qualifiedName?.asString()
-    return if (qn == "java.util.Map" || qn == "kotlin.collections.Map") true else {
+    return if (qn == "kotlin.collections.MutableMap") true else {
         val parentDecl = (parentDeclaration as? KSClassDeclaration)
         @Suppress("IfThenToElvis")
         if (parentDecl == null) false else parentDecl.isMutableMap()
