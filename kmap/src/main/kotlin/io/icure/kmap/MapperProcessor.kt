@@ -299,7 +299,7 @@ class MapperProcessor(
                         val missingSelfUseFns = selfUseFns.filter { !it.validate() || it.returnType?.validate() == false }.map { "this" to it.qualifiedName?.asString() }.toList()
                         val missingUsesFns = usesFns.filter { (_, fn) -> !fn.validate() || fn.returnType?.validate() == false }.map { (u, fn) -> u.toTypeName().toString() to fn.qualifiedName?.asString() }.toList()
                         if (missingSelfUseFns.isNotEmpty() || missingUsesFns.isNotEmpty()) {
-                            logger.warn("No mapper was found for $sourceTypeName -> $targetTypeName in class $mapperClassName during round, ${
+                            logger.warn("No mapper was found for $sourceTypeName -> $targetTypeName in class $mapperClassName during round, those mappers cannot be validated: ${
                                 (missingSelfUseFns + missingUsesFns).joinToString(",") { (a, b) -> "$a.$b" }
                             } do not validate")
                             throw ShouldDeferException()
