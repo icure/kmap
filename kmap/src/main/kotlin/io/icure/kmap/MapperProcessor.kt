@@ -342,7 +342,7 @@ class MapperProcessor(
 
             val assignments = parameters.mapNotNull { p ->
                 val mapping = mappings?.mappingsMappings()?.find { it.target == p.name?.asString() }
-                if (mapping != null && (mapping.ignore || mapping.expression != null)) {
+                if (mapping != null && (mapping.ignore || mapping.expression?.isNotEmpty() == true)) {
                     when {
                         mapping.ignore -> null
                         mapping.expression != null -> {
