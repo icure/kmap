@@ -15,6 +15,7 @@ import com.squareup.kotlinpoet.ParameterizedTypeName
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.STAR
 import com.squareup.kotlinpoet.TypeName
+import com.squareup.kotlinpoet.TypeVariableName
 import com.squareup.kotlinpoet.WildcardTypeName
 import com.squareup.kotlinpoet.tags.TypeAliasTag
 
@@ -32,10 +33,28 @@ fun KSTypeArgument.toTypeName(
 }
 
 @KotlinPoetKspPreview
+fun KSTypeReference.toResolvedTypeName(): TypeName {
+    return this.toTypeName(this.resolve().declaration.typeParameters.toTypeParameterResolver(typeThroughParameterResolver()))
+}
+
+@KotlinPoetKspPreview
+fun KSType.toResolvedTypeName(): TypeName {
+    return this.toTypeName(this.declaration.typeParameters.toTypeParameterResolver(typeThroughParameterResolver()))
+}
+
+@KotlinPoetKspPreview
+private fun typeThroughParameterResolver() = object : TypeParameterResolver {
+    override val parametersMap: Map<String, TypeVariableName>
+        get() = emptyMap()
+
+    override fun get(index: String) = TypeVariableName.invoke(index)
+}
+
+@KotlinPoetKspPreview
 fun KSTypeReference.toTypeName(
     resolvedType: KSType
 ): TypeName {
-    return resolvedType.toTypeName(TypeParameterResolver.EMPTY, element?.typeArguments.orEmpty())
+    return resolvedType.toTypeName(resolvedType.declaration.typeParameters.toTypeParameterResolver(typeThroughParameterResolver()), element?.typeArguments.orEmpty())
 }
 
 @KotlinPoetKspPreview

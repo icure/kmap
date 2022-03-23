@@ -31,7 +31,9 @@ import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.buildCodeBlock
 import com.squareup.kotlinpoet.ksp.KotlinPoetKspPreview
 import com.squareup.kotlinpoet.ksp.toClassName
+import com.squareup.kotlinpoet.ksp.toResolvedTypeName
 import com.squareup.kotlinpoet.ksp.toTypeName
+import com.squareup.kotlinpoet.ksp.toTypeVariableName
 import io.icure.kmap.exception.ShouldDeferException
 import io.icure.kmap.option.Mapping
 import java.io.OutputStream
@@ -199,21 +201,22 @@ class MapperProcessor(
                         }).apply {
                             classDeclaration.getAllFunctions().forEach { funDecl ->
                                 if (funDecl.isAbstract) {
-                                    funDecl.returnType?.resolve()?.let { rt ->
+                                    funDecl.returnType?.let { rt ->
                                         val param = funDecl.parameters.first()
                                         val mappings = funDecl.annotations.find {
                                             it.annotationType.resolve().let {
                                                 it.declaration.packageName.asString() == "org.mapstruct" && it.declaration.simpleName.asString() == "Mappings"
                                             }
                                         }
-                                        logger.info("Implementing mapper for map(${param.type.toTypeName()}) -> ${rt.toClassName()}")
+                                        logger.info("Implementing mapper for map(${param.type.toResolvedTypeName()}) -> ${rt.toResolvedTypeName()}")
 
                                         addFunction(
                                             FunSpec.builder(funDecl.simpleName.asString())
                                                 .addModifiers(KModifier.OVERRIDE)
-                                                .addParameter(param.name!!.asString(), param.type.toTypeName())
-                                                .returns(rt.toClassName()).addCode(
-                                                    mapUsingConstructor(param, rt, mapper, classDeclaration, mappings)
+                                                .addTypeVariables(funDecl.typeParameters.map {it.toTypeVariableName()})
+                                                .addParameter(param.name!!.asString(), param.type.toResolvedTypeName())
+                                                .returns(rt.toResolvedTypeName()).addCode(
+                                                    mapUsingConstructor(param, rt.resolve(), mapper, classDeclaration, mappings)
                                                 )
                                                 .build()
                                         )
@@ -262,9 +265,10 @@ class MapperProcessor(
                     isValidMappingFunction(fn, sourceTypeName, targetTypeName)
                 }
 
-                val sourceDecl = source.second.declaration as KSClassDeclaration
-                val targetDecl = target.second.declaration as KSClassDeclaration
+                val sourceDecl = source.second.declaration as? KSClassDeclaration
+                val targetDecl = target.second.declaration as? KSClassDeclaration
                 when {
+                    sourceDecl == null || targetDecl == null -> add("it")
                     selfUse != null -> addStatement("this.%L(it)", selfUse.simpleName.asString())
                     use != null -> addStatement("this.%L.%L(it)", useName(use.first), use.second.simpleName.asString())
                     sourceDecl.isCollection() && targetDecl.isList() ->
@@ -348,8 +352,8 @@ class MapperProcessor(
             targetTypeName: TypeName
         ) = it.parameters[0].validate() &&
                 it.returnType?.validate() == true &&
-                it.parameters[0].type.toTypeName() == sourceTypeName &&
-                it.returnType?.toTypeName() == targetTypeName
+                it.parameters[0].type.toResolvedTypeName() == sourceTypeName &&
+                it.returnType?.toResolvedTypeName() == targetTypeName
 
         fun mapUsingConstructor(
             source: KSValueParameter,
