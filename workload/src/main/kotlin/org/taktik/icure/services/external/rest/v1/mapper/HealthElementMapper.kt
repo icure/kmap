@@ -32,7 +32,7 @@ import org.taktik.icure.services.external.rest.v1.mapper.embed.EpisodeMapper
 import org.taktik.icure.services.external.rest.v1.mapper.embed.LateralityMapper
 import org.taktik.icure.services.external.rest.v1.mapper.embed.PlanOfActionMapper
 
-@Mapper(componentModel = "spring", uses = [LateralityMapper::class, PlanOfActionMapper::class, EpisodeMapper::class, CodeStubMapper::class, DelegationMapper::class, CareTeamMemberMapper::class, IdentifierMapper::class], injectionStrategy = InjectionStrategy.CONSTRUCTOR)
+@Mapper(componentModel = "spring", uses = [PlanOfActionMapper::class, EpisodeMapper::class, CodeStubMapper::class, DelegationMapper::class, CareTeamMemberMapper::class, IdentifierMapper::class], injectionStrategy = InjectionStrategy.CONSTRUCTOR)
 interface HealthElementMapper {
     @Mappings(
             Mapping(target = "attachments", ignore = true),
