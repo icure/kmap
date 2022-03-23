@@ -382,7 +382,7 @@ class MapperProcessor(
                     val sourcePropertyName = constructorParameter.name?.asString()?.let { t ->
                         mappings?.mappingsMappings()?.find { it.target == t && it.source != null }?.source ?: t
                     }
-                    val candidates = sourceClass.declarations.mapNotNull { it as? KSPropertyDeclaration }
+                    val candidates = sourceClass.getAllProperties()
                         .filter { it.simpleName.asString() == sourcePropertyName }.toList()
 
                     val fallBackOnSourceParameterType = source.type.takeIf { candidates.isEmpty() && sourcePropertyName == source.name?.asString() }
