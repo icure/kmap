@@ -276,13 +276,13 @@ class MapperProcessor(
                         add("it.map { %L }.toMutableSet()", getTypeArgumentConverter(0, source, target, mapper, classDeclaration))
                     sourceDecl.isCollection() && targetDecl.isSortedSet() ->
                         add("it.map { %L }.toSortedSet()", getTypeArgumentConverter(0, source, target, mapper, classDeclaration))
-                    sourceDecl.isMap() && targetDecl.isMap() ->
+                    (sourceDecl.isMap() || sourceDecl.isMutableMap()) && targetDecl.isMap() ->
                         add(
                             "it.map { (k,v) -> Pair(k?.let { %L }, v?.let { %L }) }.toMap()",
                             getTypeArgumentConverter(0, source, target, mapper, classDeclaration),
                             getTypeArgumentConverter(1, source, target, mapper, classDeclaration)
                         )
-                    sourceDecl.isMap() && targetDecl.isMutableMap() ->
+                    (sourceDecl.isMap() || sourceDecl.isMutableMap()) && targetDecl.isMutableMap() ->
                         add(
                             "it.map { (k,v) -> Pair(k?.let { %L }, v?.let { %L }) }.toMap().toMutableMap()",
                             getTypeArgumentConverter(0, source, target, mapper, classDeclaration),
