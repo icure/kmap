@@ -19,6 +19,7 @@ import com.google.devtools.ksp.symbol.KSTypeReference
 import com.google.devtools.ksp.symbol.KSValueParameter
 import com.google.devtools.ksp.symbol.KSVisitorVoid
 import com.google.devtools.ksp.symbol.Modifier
+import com.google.devtools.ksp.symbol.Nullability
 import com.google.devtools.ksp.validate
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
@@ -266,79 +267,26 @@ class MapperProcessor(
                     selfUse != null -> addStatement("this.%L(it)", selfUse.simpleName.asString())
                     use != null -> addStatement("this.%L.%L(it)", useName(use.first), use.second.simpleName.asString())
                     sourceDecl.isCollection() && targetDecl.isList() ->
-                        add(
-                            "it.map { %L }", getTypeConverter(
-                                source.first.element!!.typeArguments.first().type!!.let { it to it.resolve() },
-                                target.first.element!!.typeArguments.first().type!!.let { it to it.resolve() },
-                                mapper,
-                                classDeclaration
-                            )
-                        )
+                        add("it.map { %L }", getTypeArgumentConverter(0, source, target, mapper, classDeclaration))
                     sourceDecl.isCollection() && targetDecl.isMutableList() ->
-                        add(
-                            "it.map { %L }.toMutableList()", getTypeConverter(
-                                source.first.element!!.typeArguments.first().type!!.let { it to it.resolve() },
-                                target.first.element!!.typeArguments.first().type!!.let { it to it.resolve() },
-                                mapper,
-                                classDeclaration
-                            )
-                        )
+                        add("it.map { %L }.toMutableList()", getTypeArgumentConverter(0, source, target, mapper, classDeclaration))
                     sourceDecl.isCollection() && targetDecl.isSet() ->
-                        add(
-                            "it.map { %L }.toSet()", getTypeConverter(
-                                source.first.element!!.typeArguments.first().type!!.let { it to it.resolve() },
-                                target.first.element!!.typeArguments.first().type!!.let { it to it.resolve() },
-                                mapper,
-                                classDeclaration
-                            )
-                        )
+                        add("it.map { %L }.toSet()", getTypeArgumentConverter(0, source, target, mapper, classDeclaration))
                     sourceDecl.isCollection() && targetDecl.isMutableSet() ->
-                        add(
-                            "it.map { %L }.toMutableSet()", getTypeConverter(
-                                source.first.element!!.typeArguments.first().type!!.let { it to it.resolve() },
-                                target.first.element!!.typeArguments.first().type!!.let { it to it.resolve() },
-                                mapper,
-                                classDeclaration
-                            )
-                        )
+                        add("it.map { %L }.toMutableSet()", getTypeArgumentConverter(0, source, target, mapper, classDeclaration))
                     sourceDecl.isCollection() && targetDecl.isSortedSet() ->
-                        add(
-                            "it.map { %L }.toSortedSet()", getTypeConverter(
-                                source.first.element!!.typeArguments.first().type!!.let { it to it.resolve() },
-                                target.first.element!!.typeArguments.first().type!!.let { it to it.resolve() },
-                                mapper,
-                                classDeclaration
-                            )
-                        )
+                        add("it.map { %L }.toSortedSet()", getTypeArgumentConverter(0, source, target, mapper, classDeclaration))
                     sourceDecl.isMap() && targetDecl.isMap() ->
                         add(
                             "it.map { (k,v) -> Pair(k?.let { %L }, v?.let { %L }) }.toMap()",
-                            getTypeConverter(
-                                source.first.element!!.typeArguments[0].type!!.let { it to it.resolve() },
-                                target.first.element!!.typeArguments[0].type!!.let { it to it.resolve() },
-                                mapper,
-                                classDeclaration
-                            ), getTypeConverter(
-                                source.first.element!!.typeArguments[1].type!!.let { it to it.resolve() },
-                                target.first.element!!.typeArguments[1].type!!.let { it to it.resolve() },
-                                mapper,
-                                classDeclaration
-                            )
+                            getTypeArgumentConverter(0, source, target, mapper, classDeclaration),
+                            getTypeArgumentConverter(1, source, target, mapper, classDeclaration)
                         )
                     sourceDecl.isMap() && targetDecl.isMutableMap() ->
                         add(
                             "it.map { (k,v) -> Pair(k?.let { %L }, v?.let { %L }) }.toMap().toMutableMap()",
-                            getTypeConverter(
-                                source.first.element!!.typeArguments[0].type!!.let { it to it.resolve() },
-                                target.first.element!!.typeArguments[0].type!!.let { it to it.resolve() },
-                                mapper,
-                                classDeclaration
-                            ), getTypeConverter(
-                                source.first.element!!.typeArguments[1].type!!.let { it to it.resolve() },
-                                target.first.element!!.typeArguments[1].type!!.let { it to it.resolve() },
-                                mapper,
-                                classDeclaration
-                            )
+                            getTypeArgumentConverter(0, source, target, mapper, classDeclaration),
+                            getTypeArgumentConverter(1, source, target, mapper, classDeclaration)
                         )
 
                     sourceDecl.classKind == ClassKind.ENUM_CLASS && targetDecl.classKind == ClassKind.ENUM_CLASS ->
@@ -380,6 +328,19 @@ class MapperProcessor(
             }
         }
 
+        private fun getTypeArgumentConverter(
+            idx: Int,
+            source: Pair<KSTypeReference, KSType>,
+            target: Pair<KSTypeReference, KSType>,
+            mapper: KSAnnotation,
+            classDeclaration: KSClassDeclaration
+        ) = getTypeConverter(
+            source.first.element!!.typeArguments[idx].type!!.let { it to it.resolve() },
+            target.first.element!!.typeArguments[idx].type!!.let { it to it.resolve() },
+            mapper,
+            classDeclaration
+        )
+
         private fun isValidMappingFunction(
             it: KSFunctionDeclaration,
             sourceTypeName: TypeName,
@@ -400,10 +361,9 @@ class MapperProcessor(
                 ?: throw IllegalStateException("Return type should be a Class")
             val targetClass = (target.declaration as? KSClassDeclaration)
                 ?: throw IllegalStateException("Return type should be a Class")
-            val parameters = targetClass.primaryConstructor!!.parameters
-
-            val assignments = parameters.mapNotNull { p ->
-                val mapping = mappings?.mappingsMappings()?.find { it.target == p.name?.asString() }
+            val primaryConstructorParameters = targetClass.primaryConstructor!!.parameters
+            val assignments = primaryConstructorParameters.mapNotNull { constructorParameter ->
+                val mapping = mappings?.mappingsMappings()?.find { it.target == constructorParameter.name?.asString() }
                 if (mapping != null && (mapping.ignore || mapping.expression?.isNotEmpty() == true)) {
                     when {
                         mapping.ignore -> null
@@ -419,37 +379,52 @@ class MapperProcessor(
                         else -> null
                     }
                 } else {
-                    val sourceName = p.name?.asString()?.let { t ->
+                    val sourcePropertyName = constructorParameter.name?.asString()?.let { t ->
                         mappings?.mappingsMappings()?.find { it.target == t && it.source != null }?.source ?: t
                     }
                     val candidates = sourceClass.declarations.mapNotNull { it as? KSPropertyDeclaration }
-                        .filter { it.simpleName.asString() == sourceName }.toList()
+                        .filter { it.simpleName.asString() == sourcePropertyName }.toList()
 
-                    candidates.firstOrNull()?.let {
-                        val cType = it.type.resolve()
-                        val pType = p.type.resolve()
+                    val fallBackOnSourceParameterType = source.type.takeIf { candidates.isEmpty() && sourcePropertyName == source.name?.asString() }
 
-                        if (!it.type.validate()) {
-                            logger.warn("Deferring parameter, cannot resolve ${it.qualifiedName?.asString()}")
-                            throw ShouldDeferException()
-                        }
-                        if (!p.type.validate()) {
-                            logger.warn("Deferring parameter, cannot resolve ${p.name?.asString()}")
-                            throw ShouldDeferException()
-                        }
-
-                        val cTypeName = it.type.toTypeName(cType)
-                        val pTypeName = p.type.toTypeName(pType)
-
-                        if (cTypeName == pTypeName) {
-                            "${source.name?.asString()}.${it}"
+                    candidates.firstOrNull().let { property ->
+                        val sourceType = property?.type ?: fallBackOnSourceParameterType
+                        if (sourceType == null) {
+                            null
                         } else {
-                            val typeConverter: CodeBlock =
-                                getTypeConverter(it.type to cType, p.type to pType, mapper, classDeclaration)
-                            "${source.name?.asString()}.${it}?.let { $typeConverter }"
+                            val cType = sourceType.resolve()
+                            val pType = constructorParameter.type.resolve()
+
+                            if (!sourceType.validate()) {
+                                logger.warn("Deferring parameter, cannot resolve ${property?.qualifiedName?.asString() ?: source.name?.asString()}")
+                                throw ShouldDeferException()
+                            }
+                            if (!constructorParameter.type.validate()) {
+                                logger.warn("Deferring parameter, cannot resolve ${constructorParameter.name?.asString()}")
+                                throw ShouldDeferException()
+                            }
+
+                            val cTypeName = sourceType.toTypeName(cType)
+                            val pTypeName = constructorParameter.type.toTypeName(pType)
+
+                            val prefix = listOfNotNull(source.name?.asString(),property).joinToString(".")
+                            val nullMarker = "".takeIf { cType.nullability == Nullability.NOT_NULL } ?: "?"
+
+                            if (cTypeName == pTypeName) {
+                                "$prefix"
+                            } else {
+                                val typeConverter: CodeBlock =
+                                    getTypeConverter(
+                                        sourceType to cType,
+                                        constructorParameter.type to pType,
+                                        mapper,
+                                        classDeclaration
+                                    )
+                                "$prefix$nullMarker.let { $typeConverter }"
+                            }
                         }
-                    }?.let { p.name!!.asString() to it }
-                        ?: null.also { logger.error("Cannot find a counterpart for ${p.name?.asString()} when mapping from ${sourceClass.toClassName()} to ${targetClass.toClassName()}") }
+                    }?.let { constructorParameter.name!!.asString() to it }
+                        ?: null.also { logger.error("Cannot find a counterpart for ${constructorParameter.name?.asString()} when mapping from ${sourceClass.toClassName()} to ${targetClass.toClassName()}") }
                 }
             }
 
