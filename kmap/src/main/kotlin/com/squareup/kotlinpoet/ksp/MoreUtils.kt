@@ -137,3 +137,70 @@ internal fun KSDeclaration.toClassNameInternal(): ClassName {
         .split(".")
     return ClassName(pkgName, simpleNames)
 }
+
+fun KSClassDeclaration.isCollection() = this.isList() || this.isMutableList() || this.isSet() || this.isMutableSet() || this.isSortedSet()
+
+tailrec fun KSClassDeclaration.isList(): Boolean {
+    val qn = this.qualifiedName?.asString()
+    return if (qn == "java.util.List" || qn == "kotlin.collections.List") true else {
+        val parentDecl = (parentDeclaration as? KSClassDeclaration)
+        @Suppress("IfThenToElvis")
+        if (parentDecl == null) false else parentDecl.isList()
+    }
+}
+
+tailrec fun KSClassDeclaration.isMutableList(): Boolean {
+    val qn = this.qualifiedName?.asString()
+    return if (qn == "kotlin.collections.MutableList") true else {
+        val parentDecl = (parentDeclaration as? KSClassDeclaration)
+        @Suppress("IfThenToElvis")
+        if (parentDecl == null) false else parentDecl.isMutableList()
+    }
+}
+
+
+tailrec fun KSClassDeclaration.isSet(): Boolean {
+    val qn = this.qualifiedName?.asString()
+    return if (qn == "java.util.Set" || qn == "kotlin.collections.Set") true else {
+        val parentDecl = (parentDeclaration as? KSClassDeclaration)
+        @Suppress("IfThenToElvis")
+        if (parentDecl == null) false else parentDecl.isSet()
+    }
+}
+
+tailrec fun KSClassDeclaration.isMutableSet(): Boolean {
+    val qn = this.qualifiedName?.asString()
+    return if (qn == "java.util.Set" || qn == "kotlin.collections.Set") true else {
+        val parentDecl = (parentDeclaration as? KSClassDeclaration)
+        @Suppress("IfThenToElvis")
+        if (parentDecl == null) false else parentDecl.isMutableSet()
+    }
+}
+
+tailrec fun KSClassDeclaration.isSortedSet(): Boolean {
+    val qn = this.qualifiedName?.asString()
+    return if (qn == "java.util.SortedSet") true else {
+        val parentDecl = (parentDeclaration as? KSClassDeclaration)
+        @Suppress("IfThenToElvis")
+        if (parentDecl == null) false else parentDecl.isSortedSet()
+    }
+}
+
+
+tailrec fun KSClassDeclaration.isMap(): Boolean {
+    val qn = this.qualifiedName?.asString()
+    return if (qn == "java.util.Map" || qn == "kotlin.collections.Map") true else {
+        val parentDecl = (parentDeclaration as? KSClassDeclaration)
+        @Suppress("IfThenToElvis")
+        if (parentDecl == null) false else parentDecl.isMap()
+    }
+}
+
+tailrec fun KSClassDeclaration.isMutableMap(): Boolean {
+    val qn = this.qualifiedName?.asString()
+    return if (qn == "kotlin.collections.MutableMap") true else {
+        val parentDecl = (parentDeclaration as? KSClassDeclaration)
+        @Suppress("IfThenToElvis")
+        if (parentDecl == null) false else parentDecl.isMutableMap()
+    }
+}

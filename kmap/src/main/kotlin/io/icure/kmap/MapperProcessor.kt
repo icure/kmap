@@ -30,6 +30,14 @@ import com.squareup.kotlinpoet.TypeName
 import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.buildCodeBlock
 import com.squareup.kotlinpoet.ksp.KotlinPoetKspPreview
+import com.squareup.kotlinpoet.ksp.isCollection
+import com.squareup.kotlinpoet.ksp.isList
+import com.squareup.kotlinpoet.ksp.isMap
+import com.squareup.kotlinpoet.ksp.isMutableList
+import com.squareup.kotlinpoet.ksp.isMutableMap
+import com.squareup.kotlinpoet.ksp.isMutableSet
+import com.squareup.kotlinpoet.ksp.isSet
+import com.squareup.kotlinpoet.ksp.isSortedSet
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toResolvedTypeName
 import com.squareup.kotlinpoet.ksp.toTypeName
@@ -37,7 +45,6 @@ import com.squareup.kotlinpoet.ksp.toTypeVariableName
 import io.icure.kmap.exception.ShouldDeferException
 import io.icure.kmap.option.Mapping
 import java.io.OutputStream
-import java.lang.Exception
 import java.util.*
 
 fun OutputStream.appendText(str: String) {
@@ -70,77 +77,9 @@ private fun KSAnnotation.mappingsMappings() =
                 source = it.arguments.find { it.name?.asString() == "source" }?.value as? String,
                 ignore = it.arguments.find { it.name?.asString() == "ignore" }?.value as? Boolean ?: false,
                 expression = it.arguments.find { it.name?.asString() == "expression" }?.value as? String,
-                )
+            )
         }
     } ?: emptyList()
-
-
-private fun KSClassDeclaration.isCollection() = this.isList() || this.isMutableList() || this.isSet() || this.isMutableSet() || this.isSortedSet()
-
-private tailrec fun KSClassDeclaration.isList(): Boolean {
-    val qn = this.qualifiedName?.asString()
-    return if (qn == "java.util.List" || qn == "kotlin.collections.List") true else {
-        val parentDecl = (parentDeclaration as? KSClassDeclaration)
-        @Suppress("IfThenToElvis")
-        if (parentDecl == null) false else parentDecl.isList()
-    }
-}
-
-private tailrec fun KSClassDeclaration.isMutableList(): Boolean {
-    val qn = this.qualifiedName?.asString()
-    return if (qn == "kotlin.collections.MutableList") true else {
-        val parentDecl = (parentDeclaration as? KSClassDeclaration)
-        @Suppress("IfThenToElvis")
-        if (parentDecl == null) false else parentDecl.isMutableList()
-    }
-}
-
-
-private tailrec fun KSClassDeclaration.isSet(): Boolean {
-    val qn = this.qualifiedName?.asString()
-    return if (qn == "java.util.Set" || qn == "kotlin.collections.Set") true else {
-        val parentDecl = (parentDeclaration as? KSClassDeclaration)
-        @Suppress("IfThenToElvis")
-        if (parentDecl == null) false else parentDecl.isSet()
-    }
-}
-
-private tailrec fun KSClassDeclaration.isMutableSet(): Boolean {
-    val qn = this.qualifiedName?.asString()
-    return if (qn == "java.util.Set" || qn == "kotlin.collections.Set") true else {
-        val parentDecl = (parentDeclaration as? KSClassDeclaration)
-        @Suppress("IfThenToElvis")
-        if (parentDecl == null) false else parentDecl.isMutableSet()
-    }
-}
-
-private tailrec fun KSClassDeclaration.isSortedSet(): Boolean {
-    val qn = this.qualifiedName?.asString()
-    return if (qn == "java.util.SortedSet") true else {
-        val parentDecl = (parentDeclaration as? KSClassDeclaration)
-        @Suppress("IfThenToElvis")
-        if (parentDecl == null) false else parentDecl.isSortedSet()
-    }
-}
-
-
-private tailrec fun KSClassDeclaration.isMap(): Boolean {
-    val qn = this.qualifiedName?.asString()
-    return if (qn == "java.util.Map" || qn == "kotlin.collections.Map") true else {
-        val parentDecl = (parentDeclaration as? KSClassDeclaration)
-        @Suppress("IfThenToElvis")
-        if (parentDecl == null) false else parentDecl.isMap()
-    }
-}
-
-private tailrec fun KSClassDeclaration.isMutableMap(): Boolean {
-    val qn = this.qualifiedName?.asString()
-    return if (qn == "kotlin.collections.MutableMap") true else {
-        val parentDecl = (parentDeclaration as? KSClassDeclaration)
-        @Suppress("IfThenToElvis")
-        if (parentDecl == null) false else parentDecl.isMutableMap()
-    }
-}
 
 @KotlinPoetKspPreview
 @KspExperimental
@@ -185,16 +124,23 @@ class MapperProcessor(
                         when (mapper.mapperComponentModel()) {
                             "spring" -> addAnnotation(ClassName("org.springframework.stereotype", "Service"))
                         }
-                    }
-                        .addSuperinterface(classDeclaration.toClassName())
-                        .primaryConstructor(FunSpec.constructorBuilder().apply {
-                            uses.forEach {
-                                addParameter(
-                                    useName(it),
-                                    it.toClassName(),
-                                )
+                    }.apply {
+                        when(classDeclaration.classKind) {
+                            ClassKind.INTERFACE -> addSuperinterface(classDeclaration.toClassName())
+                            ClassKind.CLASS -> superclass(classDeclaration.toClassName())
+                            else -> {
+                                logger.error("Invalid class kind $className")
+                                return
                             }
-                        }.build())
+                        }
+                    }.primaryConstructor(FunSpec.constructorBuilder().apply {
+                        uses.forEach {
+                            addParameter(
+                                useName(it),
+                                it.toClassName(),
+                            )
+                        }
+                    }.build())
                         .addProperties(uses.map {
                             val propName = useName(it)
                             PropertySpec.builder(propName, it.toClassName()).initializer(propName).build()
@@ -213,10 +159,16 @@ class MapperProcessor(
                                         addFunction(
                                             FunSpec.builder(funDecl.simpleName.asString())
                                                 .addModifiers(KModifier.OVERRIDE)
-                                                .addTypeVariables(funDecl.typeParameters.map {it.toTypeVariableName()})
+                                                .addTypeVariables(funDecl.typeParameters.map { it.toTypeVariableName() })
                                                 .addParameter(param.name!!.asString(), param.type.toResolvedTypeName())
                                                 .returns(rt.toResolvedTypeName()).addCode(
-                                                    mapUsingConstructor(param, rt.resolve(), mapper, classDeclaration, mappings)
+                                                    mapUsingConstructor(
+                                                        param,
+                                                        rt.resolve(),
+                                                        mapper,
+                                                        classDeclaration,
+                                                        mappings
+                                                    )
                                                 )
                                                 .build()
                                         )
@@ -254,9 +206,13 @@ class MapperProcessor(
                 val sourceTypeName = source.first.toTypeName(source.second)
                 val targetTypeName = target.first.toTypeName(target.second)
 
-                val selfUseFns = classDeclaration.getAllFunctions().filter { it.qualifiedName?.asString() != "equals" && it.parameters.size == 1 }
-                val usesFns = mapper.mapperUses().flatMap { u -> (u.declaration as? KSClassDeclaration)?.getAllFunctions()
-                    ?.filter { it.qualifiedName?.asString() != "equals" && it.parameters.size == 1 }?.map { u to it }?.toList() ?: emptyList() }
+                val selfUseFns = classDeclaration.getAllFunctions()
+                    .filter { it.qualifiedName?.asString() != "equals" && it.parameters.size == 1 }
+                val usesFns = mapper.mapperUses().flatMap { u ->
+                    (u.declaration as? KSClassDeclaration)?.getAllFunctions()
+                        ?.filter { it.qualifiedName?.asString() != "equals" && it.parameters.size == 1 }
+                        ?.map { u to it }?.toList() ?: emptyList()
+                }
 
                 val selfUse = selfUseFns.find {
                     isValidMappingFunction(it, sourceTypeName, targetTypeName)
@@ -274,13 +230,25 @@ class MapperProcessor(
                     sourceDecl.isCollection() && targetDecl.isList() ->
                         add("it.map { %L }", getTypeArgumentConverter(0, source, target, mapper, classDeclaration))
                     sourceDecl.isCollection() && targetDecl.isMutableList() ->
-                        add("it.map { %L }.toMutableList()", getTypeArgumentConverter(0, source, target, mapper, classDeclaration))
+                        add(
+                            "it.map { %L }.toMutableList()",
+                            getTypeArgumentConverter(0, source, target, mapper, classDeclaration)
+                        )
                     sourceDecl.isCollection() && targetDecl.isSet() ->
-                        add("it.map { %L }.toSet()", getTypeArgumentConverter(0, source, target, mapper, classDeclaration))
+                        add(
+                            "it.map { %L }.toSet()",
+                            getTypeArgumentConverter(0, source, target, mapper, classDeclaration)
+                        )
                     sourceDecl.isCollection() && targetDecl.isMutableSet() ->
-                        add("it.map { %L }.toMutableSet()", getTypeArgumentConverter(0, source, target, mapper, classDeclaration))
+                        add(
+                            "it.map { %L }.toMutableSet()",
+                            getTypeArgumentConverter(0, source, target, mapper, classDeclaration)
+                        )
                     sourceDecl.isCollection() && targetDecl.isSortedSet() ->
-                        add("it.map { %L }.toSortedSet()", getTypeArgumentConverter(0, source, target, mapper, classDeclaration))
+                        add(
+                            "it.map { %L }.toSortedSet()",
+                            getTypeArgumentConverter(0, source, target, mapper, classDeclaration)
+                        )
                     (sourceDecl.isMap() || sourceDecl.isMutableMap()) && targetDecl.isMap() ->
                         add(
                             "it.map { (k,v) -> Pair(k?.let { %L }, v?.let { %L }) }.toMap()",
@@ -297,19 +265,30 @@ class MapperProcessor(
                     sourceDecl.classKind == ClassKind.ENUM_CLASS && targetDecl.classKind == ClassKind.ENUM_CLASS ->
                         add("%T.valueOf(it.name)", targetDecl.toClassName())
                     source.second.isMarkedNullable && target.second.isMarkedNullable -> {
-                        add("it?.let { %L }", getTypeConverter(
-                            source.copy(second = source.second.makeNotNullable()), target.copy(second = target.second.makeNotNullable()), mapper, classDeclaration
-                        ))
+                        add(
+                            "it?.let { %L }", getTypeConverter(
+                                source.copy(second = source.second.makeNotNullable()),
+                                target.copy(second = target.second.makeNotNullable()),
+                                mapper,
+                                classDeclaration
+                            )
+                        )
                     }
                     target.second.isMarkedNullable -> {
-                        add("%L", getTypeConverter(
-                            source, target.copy(second = target.second.makeNotNullable()), mapper, classDeclaration
-                        ))
+                        add(
+                            "%L", getTypeConverter(
+                                source, target.copy(second = target.second.makeNotNullable()), mapper, classDeclaration
+                            )
+                        )
                     }
                     else -> {
                         val mapperClassName = classDeclaration.toClassName()
-                        val missingSelfUseFns = selfUseFns.filter { !it.validate() || it.returnType?.validate() == false }.map { "this" to it.qualifiedName?.asString() }.toList()
-                        val missingUsesFns = usesFns.filter { (_, fn) -> !fn.validate() || fn.returnType?.validate() == false }.map { (u, fn) -> u.toTypeName().toString() to fn.qualifiedName?.asString() }.toList()
+                        val missingSelfUseFns =
+                            selfUseFns.filter { !it.validate() || it.returnType?.validate() == false }
+                                .map { "this" to it.qualifiedName?.asString() }.toList()
+                        val missingUsesFns =
+                            usesFns.filter { (_, fn) -> !fn.validate() || fn.returnType?.validate() == false }
+                                .map { (u, fn) -> u.toTypeName().toString() to fn.qualifiedName?.asString() }.toList()
                         if (missingSelfUseFns.isNotEmpty() || missingUsesFns.isNotEmpty()) {
                             logger.warn("No mapper was found for $sourceTypeName -> $targetTypeName in class $mapperClassName during round, those mappers cannot be validated: ${
                                 (missingSelfUseFns + missingUsesFns).joinToString(",") { (a, b) -> "$a.$b" }
@@ -320,14 +299,14 @@ class MapperProcessor(
                         }
                     }
                 }
-            } catch(e:Exception) {
+            } catch (e: Exception) {
                 try {
                     val mapperClassName = classDeclaration.toClassName()
                     val sourceTypeName = source.first.toTypeName(source.second)
                     val targetTypeName = target.first.toTypeName(target.second)
 
                     logger.error("An error occurred while trying to get converter: $sourceTypeName -> $targetTypeName in class $mapperClassName : ${e}")
-                } catch(e:Exception) {
+                } catch (e: Exception) {
                     logger.error("Internal error in getTypeConverter")
                 }
             }
