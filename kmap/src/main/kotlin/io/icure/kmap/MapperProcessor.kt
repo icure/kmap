@@ -162,7 +162,7 @@ class MapperProcessor(
                                                 .addTypeVariables(funDecl.typeParameters.map { it.toTypeVariableName() })
                                                 .addParameter(param.name!!.asString(), param.type.toResolvedTypeName())
                                                 .returns(rt.toResolvedTypeName()).addCode(
-                                                    mapUsingConstructor(
+                                                    mapUsingPrimaryConstructor(
                                                         param,
                                                         rt.resolve(),
                                                         mapper,
@@ -334,7 +334,7 @@ class MapperProcessor(
                 it.parameters[0].type.toResolvedTypeName() == sourceTypeName &&
                 it.returnType?.toResolvedTypeName() == targetTypeName
 
-        fun mapUsingConstructor(
+        fun mapUsingPrimaryConstructor(
             source: KSValueParameter,
             target: KSType,
             mapper: KSAnnotation,
