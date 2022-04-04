@@ -228,36 +228,36 @@ class MapperProcessor(
                     selfUse != null -> addStatement("this.%L(it)", selfUse.simpleName.asString())
                     use != null -> addStatement("this.%L.%L(it)", useName(use.first), use.second.simpleName.asString())
                     sourceDecl.isCollection() && targetDecl.isList() ->
-                        add("it.map { %L }", getTypeArgumentConverter(0, source, target, mapper, classDeclaration))
+                        add("it.map·{ %L }", getTypeArgumentConverter(0, source, target, mapper, classDeclaration))
                     sourceDecl.isCollection() && targetDecl.isMutableList() ->
                         add(
-                            "it.map { %L }.toMutableList()",
+                            "it.map·{ %L }.toMutableList()",
                             getTypeArgumentConverter(0, source, target, mapper, classDeclaration)
                         )
                     sourceDecl.isCollection() && targetDecl.isSet() ->
                         add(
-                            "it.map { %L }.toSet()",
+                            "it.map·{ %L }.toSet()",
                             getTypeArgumentConverter(0, source, target, mapper, classDeclaration)
                         )
                     sourceDecl.isCollection() && targetDecl.isMutableSet() ->
                         add(
-                            "it.map { %L }.toMutableSet()",
+                            "it.map·{ %L }.toMutableSet()",
                             getTypeArgumentConverter(0, source, target, mapper, classDeclaration)
                         )
                     sourceDecl.isCollection() && targetDecl.isSortedSet() ->
                         add(
-                            "it.map { %L }.toSortedSet()",
+                            "it.map·{ %L }.toSortedSet()",
                             getTypeArgumentConverter(0, source, target, mapper, classDeclaration)
                         )
                     (sourceDecl.isMap() || sourceDecl.isMutableMap()) && targetDecl.isMap() ->
                         add(
-                            "it.map { (k,v) -> Pair(k?.let { %L }, v?.let { %L }) }.toMap()",
+                            "it.map·{ (k,v) -> Pair(k?.let { %L }, v?.let { %L }) }.toMap()",
                             getTypeArgumentConverter(0, source, target, mapper, classDeclaration),
                             getTypeArgumentConverter(1, source, target, mapper, classDeclaration)
                         )
                     (sourceDecl.isMap() || sourceDecl.isMutableMap()) && targetDecl.isMutableMap() ->
                         add(
-                            "it.map { (k,v) -> Pair(k?.let { %L }, v?.let { %L }) }.toMap().toMutableMap()",
+                            "it.map·{ (k,v) -> Pair(k?.let { %L }, v?.let { %L }) }.toMap().toMutableMap()",
                             getTypeArgumentConverter(0, source, target, mapper, classDeclaration),
                             getTypeArgumentConverter(1, source, target, mapper, classDeclaration)
                         )
@@ -266,7 +266,7 @@ class MapperProcessor(
                         add("%T.valueOf(it.name)", targetDecl.toClassName())
                     source.second.isMarkedNullable && target.second.isMarkedNullable -> {
                         add(
-                            "it?.let { %L }", getTypeConverter(
+                            "it?.let·{ %L }", getTypeConverter(
                                 source.copy(second = source.second.makeNotNullable()),
                                 target.copy(second = target.second.makeNotNullable()),
                                 mapper,
@@ -409,7 +409,7 @@ class MapperProcessor(
                                         mapper,
                                         classDeclaration
                                     )
-                                "$prefix$nullMarker.let { $typeConverter }"
+                                "$prefix$nullMarker.let·{ $typeConverter }"
                             }
                         }
                     }?.let { constructorParameter.name!!.asString() to it }
@@ -417,7 +417,7 @@ class MapperProcessor(
                 }
             }
 
-            add("return %T(%L)",
+            add("return·%T(%L)",
                 target.toClassName(),
                 buildCodeBlock {
                     assignments.forEach { (p, v) -> addStatement("$p = $v, ") }
