@@ -53,7 +53,8 @@ fun OutputStream.appendText(str: String) {
 
 private fun KSClassDeclaration.mapperAnnotation() = annotations.find {
     it.annotationType.resolve().let {
-        it.declaration.packageName.asString() == "org.mapstruct" && it.declaration.simpleName.asString() == "Mapper"
+        (it.declaration.packageName.asString() == "org.mapstruct" || it.declaration.packageName.asString() == "io.icure.kmap") &&
+                it.declaration.simpleName.asString() == "Mapper"
     }
 }!!
 
@@ -225,8 +226,8 @@ class MapperProcessor(
                 val targetDecl = target.second.declaration as? KSClassDeclaration
                 when {
                     sourceDecl == null || targetDecl == null -> add("it")
-                    selfUse != null -> addStatement("this.%L(it)", selfUse.simpleName.asString())
-                    use != null -> addStatement("this.%L.%L(it)", useName(use.first), use.second.simpleName.asString())
+                    selfUse != null -> add("this.%L(it)", selfUse.simpleName.asString())
+                    use != null -> add("this.%L.%L(it)", useName(use.first), use.second.simpleName.asString())
                     sourceDecl.isCollection() && targetDecl.isList() ->
                         add("it.map·{ %L }", getTypeArgumentConverter(0, source, target, mapper, classDeclaration))
                     sourceDecl.isCollection() && targetDecl.isMutableList() ->
@@ -251,13 +252,13 @@ class MapperProcessor(
                         )
                     (sourceDecl.isMap() || sourceDecl.isMutableMap()) && targetDecl.isMap() ->
                         add(
-                            "it.map·{ (k,v) -> Pair(k?.let { %L }, v?.let { %L }) }.toMap()",
+                            "it.map·{ (k,v) -> Pair(k?.let·{ %L }, v?.let·{ %L }) }.toMap()",
                             getTypeArgumentConverter(0, source, target, mapper, classDeclaration),
                             getTypeArgumentConverter(1, source, target, mapper, classDeclaration)
                         )
                     (sourceDecl.isMap() || sourceDecl.isMutableMap()) && targetDecl.isMutableMap() ->
                         add(
-                            "it.map·{ (k,v) -> Pair(k?.let { %L }, v?.let { %L }) }.toMap().toMutableMap()",
+                            "it.map·{ (k,v) -> Pair(k?.let·{ %L }, v?.let·{ %L }) }.toMap().toMutableMap()",
                             getTypeArgumentConverter(0, source, target, mapper, classDeclaration),
                             getTypeArgumentConverter(1, source, target, mapper, classDeclaration)
                         )
@@ -400,7 +401,7 @@ class MapperProcessor(
                             val nullMarker = "".takeIf { cType.nullability == Nullability.NOT_NULL } ?: "?"
 
                             if (cTypeName == pTypeName) {
-                                prefix
+                                buildCodeBlock { add(prefix) }
                             } else {
                                 val typeConverter: CodeBlock =
                                     getTypeConverter(
@@ -409,7 +410,9 @@ class MapperProcessor(
                                         mapper,
                                         classDeclaration
                                     )
-                                "$prefix$nullMarker.let·{ $typeConverter }"
+                                buildCodeBlock {
+                                    add("$prefix$nullMarker.let·{ %L }", typeConverter)
+                                }
                             }
                         }
                     }?.let { constructorParameter.name!!.asString() to it }
@@ -420,7 +423,7 @@ class MapperProcessor(
             add("return·%T(%L)",
                 target.toClassName(),
                 buildCodeBlock {
-                    assignments.forEach { (p, v) -> addStatement("$p = $v, ") }
+                    assignments.forEach { (p, v) -> addStatement("$p = %L, ", v) }
                 }
             )
         }
