@@ -1,7 +1,7 @@
 val kotlinVersion: String by project
 val kspVersion: String by project
 
-val kpv = "1.10.2"
+val kpv = "1.11.0"
 
 plugins {
     kotlin("jvm")
@@ -34,15 +34,15 @@ dependencies {
     implementation("com.squareup:kotlinpoet:$kpv")
     implementation("com.squareup:kotlinpoet-ksp:$kpv")
     implementation("com.google.devtools.ksp:symbol-processing-api:$kspVersion")
-    implementation(group = "org.mapstruct", name = "mapstruct", version = "1.3.1.Final")
+    implementation(group = "org.mapstruct", name = "mapstruct", version = "1.4.2.Final")
 
-    implementation(group = "ch.qos.logback", name = "logback-classic", version = "1.2.6")
-    implementation(group = "ch.qos.logback", name = "logback-access", version = "1.2.6")
+    implementation(group = "ch.qos.logback", name = "logback-classic", version = "1.2.11")
+    implementation(group = "ch.qos.logback", name = "logback-access", version = "1.2.11")
 
-    implementation(group = "org.slf4j", name = "slf4j-api", version = "1.7.32")
-    implementation(group = "org.slf4j", name = "jul-to-slf4j", version = "1.7.32")
-    implementation(group = "org.slf4j", name = "jcl-over-slf4j", version = "1.7.32")
-    implementation(group = "org.slf4j", name = "log4j-over-slf4j", version = "1.7.32")
+    implementation(group = "org.slf4j", name = "slf4j-api", version = "1.7.36")
+    implementation(group = "org.slf4j", name = "jul-to-slf4j", version = "1.7.36")
+    implementation(group = "org.slf4j", name = "jcl-over-slf4j", version = "1.7.36")
+    implementation(group = "org.slf4j", name = "log4j-over-slf4j", version = "1.7.36")
 }
 
 sourceSets.main {
