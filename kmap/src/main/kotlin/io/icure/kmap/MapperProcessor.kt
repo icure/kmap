@@ -38,6 +38,7 @@ import com.squareup.kotlinpoet.ksp.isMutableMap
 import com.squareup.kotlinpoet.ksp.isMutableSet
 import com.squareup.kotlinpoet.ksp.isSet
 import com.squareup.kotlinpoet.ksp.isSortedSet
+import com.squareup.kotlinpoet.ksp.toAnnotationSpec
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toResolvedTypeName
 import com.squareup.kotlinpoet.ksp.toTypeName
@@ -115,6 +116,7 @@ class MapperProcessor(
         override fun visitClassDeclaration(classDeclaration: KSClassDeclaration, data: Unit) {
             val packageName = classDeclaration.containingFile!!.packageName.asString()
             val className = "${classDeclaration.simpleName.asString()}Impl"
+            val annotationSpecs = classDeclaration.annotations.filterNot { it.shortName.asString().startsWith("Mapping") }.map { it.toAnnotationSpec() }.toList()
             val fileSpec = FileSpec.builder(
                 packageName = packageName,
                 fileName = classDeclaration.simpleName.asString()
@@ -125,6 +127,7 @@ class MapperProcessor(
                         when (mapper.mapperComponentModel()) {
                             "spring" -> addAnnotation(ClassName("org.springframework.stereotype", "Service"))
                         }
+                        addAnnotations(annotationSpecs)
                     }.apply {
                         when(classDeclaration.classKind) {
                             ClassKind.INTERFACE -> addSuperinterface(classDeclaration.toClassName())
