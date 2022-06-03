@@ -116,7 +116,9 @@ class MapperProcessor(
         override fun visitClassDeclaration(classDeclaration: KSClassDeclaration, data: Unit) {
             val packageName = classDeclaration.containingFile!!.packageName.asString()
             val className = "${classDeclaration.simpleName.asString()}Impl"
-            val annotationSpecs = classDeclaration.annotations.filterNot { it.shortName.asString().startsWith("Mapping") }.map { it.toAnnotationSpec() }.toList()
+            val annotationSpecs =
+                classDeclaration.annotations.filterNot { it.shortName.asString().startsWith("Mapper") }
+                    .map { it.toAnnotationSpec() }.toList()
             val fileSpec = FileSpec.builder(
                 packageName = packageName,
                 fileName = classDeclaration.simpleName.asString()
@@ -129,7 +131,7 @@ class MapperProcessor(
                         }
                         addAnnotations(annotationSpecs)
                     }.apply {
-                        when(classDeclaration.classKind) {
+                        when (classDeclaration.classKind) {
                             ClassKind.INTERFACE -> addSuperinterface(classDeclaration.toClassName())
                             ClassKind.CLASS -> superclass(classDeclaration.toClassName())
                             else -> {
