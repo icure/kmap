@@ -38,6 +38,7 @@ import com.squareup.kotlinpoet.ksp.isMutableMap
 import com.squareup.kotlinpoet.ksp.isMutableSet
 import com.squareup.kotlinpoet.ksp.isSet
 import com.squareup.kotlinpoet.ksp.isSortedSet
+import com.squareup.kotlinpoet.ksp.isString
 import com.squareup.kotlinpoet.ksp.toAnnotationSpec
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toResolvedTypeName
@@ -270,6 +271,10 @@ class MapperProcessor(
 
                     sourceDecl.classKind == ClassKind.ENUM_CLASS && targetDecl.classKind == ClassKind.ENUM_CLASS ->
                         add("%T.valueOf(it.name)", targetDecl.toClassName())
+                    sourceDecl.classKind == ClassKind.ENUM_CLASS && targetDecl.isString() ->
+                        add("it.name", targetDecl.toClassName())
+                    sourceDecl.isString() && targetDecl.classKind == ClassKind.ENUM_CLASS ->
+                        add("%L.valueOf(it)", targetDecl.toClassName())
                     source.second.isMarkedNullable && target.second.isMarkedNullable -> {
                         add(
                             "it?.let·{ %L }", getTypeConverter(
