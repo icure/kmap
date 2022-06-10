@@ -204,3 +204,8 @@ tailrec fun KSClassDeclaration.isMutableMap(): Boolean {
         if (parentDecl == null) false else parentDecl.isMutableMap()
     }
 }
+
+fun KSClassDeclaration.isString(): Boolean {
+    val qn = this.qualifiedName?.asString()
+    return qn == "kotlin.String"
+}
