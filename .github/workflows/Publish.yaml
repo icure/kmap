@@ -25,12 +25,16 @@ jobs:
           MAVEN_USERNAME: test
           MAVEN_PASSWORD: test
           MAVEN_REPOSITORY: test
+          MAVEN_RELEASE_REPOSITORY: test
+          MAVEN_SNAPSHOT_REPOSITORY: test
         run: |
           mkdir -p ~/.gradle/
           echo "GRADLE_USER_HOME=${HOME}/.gradle" >> $GITHUB_ENV
           echo "repoUsername=${MAVEN_USERNAME}" > ~/.gradle/gradle.properties
           echo "repoPassword=${MAVEN_PASSWORD}" >> ~/.gradle/gradle.properties
           echo "mavenRepository=${MAVEN_REPOSITORY}" >> ~/.gradle/gradle.properties
+          echo "mavenReleasesRepository=${MAVEN_RELEASE_REPOSITORY}" >> ~/.gradle/gradle.properties
+          echo "mavenSnapshotsRepository=${MAVEN_SNAPSHOT_REPOSITORY}" >> ~/.gradle/gradle.properties
 
       - name: Grant Permissions to gradlew
         run: |
