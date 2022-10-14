@@ -38,6 +38,7 @@ import com.squareup.kotlinpoet.ksp.isMutableMap
 import com.squareup.kotlinpoet.ksp.isMutableSet
 import com.squareup.kotlinpoet.ksp.isSet
 import com.squareup.kotlinpoet.ksp.isSortedSet
+import com.squareup.kotlinpoet.ksp.isString
 import com.squareup.kotlinpoet.ksp.toAnnotationSpec
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toResolvedTypeName
@@ -116,7 +117,9 @@ class MapperProcessor(
         override fun visitClassDeclaration(classDeclaration: KSClassDeclaration, data: Unit) {
             val packageName = classDeclaration.containingFile!!.packageName.asString()
             val className = "${classDeclaration.simpleName.asString()}Impl"
-            val annotationSpecs = classDeclaration.annotations.filterNot { it.shortName.asString().startsWith("Mapping") }.map { it.toAnnotationSpec() }.toList()
+            val annotationSpecs =
+                classDeclaration.annotations.filterNot { it.shortName.asString().startsWith("Mapper") }
+                    .map { it.toAnnotationSpec() }.toList()
             val fileSpec = FileSpec.builder(
                 packageName = packageName,
                 fileName = classDeclaration.simpleName.asString()
@@ -129,7 +132,7 @@ class MapperProcessor(
                         }
                         addAnnotations(annotationSpecs)
                     }.apply {
-                        when(classDeclaration.classKind) {
+                        when (classDeclaration.classKind) {
                             ClassKind.INTERFACE -> addSuperinterface(classDeclaration.toClassName())
                             ClassKind.CLASS -> superclass(classDeclaration.toClassName())
                             else -> {
@@ -253,21 +256,31 @@ class MapperProcessor(
                             "it.map·{ %L }.toSortedSet()",
                             getTypeArgumentConverter(0, source, target, mapper, classDeclaration)
                         )
-                    (sourceDecl.isMap() || sourceDecl.isMutableMap()) && targetDecl.isMap() ->
-                        add(
-                            "it.map·{ (k,v) -> Pair(k?.let·{ %L }, v?.let·{ %L }) }.toMap()",
-                            getTypeArgumentConverter(0, source, target, mapper, classDeclaration),
-                            getTypeArgumentConverter(1, source, target, mapper, classDeclaration)
-                        )
-                    (sourceDecl.isMap() || sourceDecl.isMutableMap()) && targetDecl.isMutableMap() ->
-                        add(
-                            "it.map·{ (k,v) -> Pair(k?.let·{ %L }, v?.let·{ %L }) }.toMap().toMutableMap()",
-                            getTypeArgumentConverter(0, source, target, mapper, classDeclaration),
-                            getTypeArgumentConverter(1, source, target, mapper, classDeclaration)
-                        )
+                    (sourceDecl.isMap() || sourceDecl.isMutableMap()) -> {
+                        val formatStringBuilder = StringBuilder()
+                        formatStringBuilder.append("it.map·{ (k,v) -> Pair(")
 
+                        if (source.second.arguments[0].type?.resolve()?.isMarkedNullable != false) formatStringBuilder.append("k?.let·{ %L }, ")
+                        else formatStringBuilder.append("k.let·{ %L }, ")
+
+                        if (source.second.arguments[1].type?.resolve()?.isMarkedNullable != false) formatStringBuilder.append("v?.let·{ %L }) }")
+                        else formatStringBuilder.append("v.let·{ %L }) }")
+
+                        if (targetDecl.isMap()) formatStringBuilder.append(".toMap()")
+                        if (targetDecl.isMutableMap()) formatStringBuilder.append(".toMutableMap()")
+
+                        add(
+                            formatStringBuilder.toString(),
+                            getTypeArgumentConverter(0, source, target, mapper, classDeclaration),
+                            getTypeArgumentConverter(1, source, target, mapper, classDeclaration)
+                        )
+                    }
                     sourceDecl.classKind == ClassKind.ENUM_CLASS && targetDecl.classKind == ClassKind.ENUM_CLASS ->
                         add("%T.valueOf(it.name)", targetDecl.toClassName())
+                    sourceDecl.classKind == ClassKind.ENUM_CLASS && targetDecl.isString() ->
+                        add("it.name", targetDecl.toClassName())
+                    sourceDecl.isString() && targetDecl.classKind == ClassKind.ENUM_CLASS ->
+                        add("%L.valueOf(it)", targetDecl.toClassName())
                     source.second.isMarkedNullable && target.second.isMarkedNullable -> {
                         add(
                             "it?.let·{ %L }", getTypeConverter(
