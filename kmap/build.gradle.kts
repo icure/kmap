@@ -10,7 +10,13 @@ plugins {
 buildscript {
     repositories {
         mavenCentral()
-        maven { url = uri("https://maven.taktik.be/content/groups/public") }
+        maven {
+            url = uri("https://maven.taktik.be/content/groups/public")
+            credentials {
+                username = System.getenv("MAVEN_USERNAME")
+                password = System.getenv("MAVEN_PASSWORD")
+            }
+        }
     }
     dependencies {
         classpath("com.taktik.gradle:gradle-plugin-git-version:2.0.2")
