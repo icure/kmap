@@ -36,7 +36,6 @@ jobs:
           echo "mavenRepository=${MAVEN_REPOSITORY}" >> ~/.gradle/gradle.properties
           echo "mavenReleasesRepository=${MAVEN_RELEASE_REPOSITORY}" >> ~/.gradle/gradle.properties
           echo "mavenSnapshotsRepository=${MAVEN_SNAPSHOT_REPOSITORY}" >> ~/.gradle/gradle.properties
-          cat ~/.gradle/gradle.properties
 
       - name: Grant Permissions to gradlew
         run: |
