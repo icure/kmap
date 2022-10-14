@@ -1,0 +1,28 @@
+name: Publish
+
+on:
+  push:
+    branches:
+      - fix-mutable-map
+
+jobs:
+  publish:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+
+      - name: Setup JDK
+        uses: actions/setup-java@v2
+        with:
+          java-version: '17'
+          distribution: 'adopt'
+
+      - name: Grant Permissions to gradlew
+        run: |
+          gradle wrapper
+          chmod +x gradlew
+
+      - name: Publish
+        run: ./gradlew :kmap:build -x test
