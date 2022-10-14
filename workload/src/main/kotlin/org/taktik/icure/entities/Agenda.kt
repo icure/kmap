@@ -26,6 +26,7 @@ import org.taktik.icure.entities.utils.MergeUtil
 import org.taktik.icure.utils.DynamicInitializer
 import org.taktik.icure.utils.invoke
 
+//jlgybo
 data class Agenda(
        override val id: String,
        override val rev: String? = null,

@@ -25,7 +25,7 @@ import org.mapstruct.Mappings
 import org.taktik.icure.entities.ApplicationSettings
 import org.taktik.icure.services.external.rest.v1.dto.ApplicationSettingsDto
 import org.taktik.icure.services.external.rest.v1.mapper.base.CodeStubMapper
-
+//asdadasfghfhf
 @Mapper(componentModel = "spring", uses = [CodeStubMapper::class], injectionStrategy = InjectionStrategy.CONSTRUCTOR)
 interface ApplicationSettingsMapper {
     @Mappings(

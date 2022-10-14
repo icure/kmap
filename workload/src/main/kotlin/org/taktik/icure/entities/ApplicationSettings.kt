@@ -40,7 +40,6 @@ data class ApplicationSettings(
        override val revisionsInfo: List<RevisionInfo>? = emptyList(),
        override val conflicts: List<String>? = emptyList(),
        override val revHistory: Map<String, String>? = emptyMap()
-
 ) : StoredICureDocument {
     companion object : DynamicInitializer<ApplicationSettings>
 

@@ -256,19 +256,25 @@ class MapperProcessor(
                             "it.map·{ %L }.toSortedSet()",
                             getTypeArgumentConverter(0, source, target, mapper, classDeclaration)
                         )
-                    (sourceDecl.isMap() || sourceDecl.isMutableMap()) && targetDecl.isMap() ->
-                        add(
-                            "it.map·{ (k,v) -> Pair(k?.let·{ %L }, v?.let·{ %L }) }.toMap()",
-                            getTypeArgumentConverter(0, source, target, mapper, classDeclaration),
-                            getTypeArgumentConverter(1, source, target, mapper, classDeclaration)
-                        )
-                    (sourceDecl.isMap() || sourceDecl.isMutableMap()) && targetDecl.isMutableMap() ->
-                        add(
-                            "it.map·{ (k,v) -> Pair(k?.let·{ %L }, v?.let·{ %L }) }.toMap().toMutableMap()",
-                            getTypeArgumentConverter(0, source, target, mapper, classDeclaration),
-                            getTypeArgumentConverter(1, source, target, mapper, classDeclaration)
-                        )
+                    (sourceDecl.isMap() || sourceDecl.isMutableMap()) -> {
+                        val formatStringBuilder = StringBuilder()
+                        formatStringBuilder.append("it.map·{ (k,v) -> Pair(")
 
+                        if (source.second.arguments[0].type?.resolve()?.isMarkedNullable != false) formatStringBuilder.append("k?.let·{ %L }, ")
+                        else formatStringBuilder.append("k.let·{ %L }, ")
+
+                        if (source.second.arguments[1].type?.resolve()?.isMarkedNullable != false) formatStringBuilder.append("v?.let·{ %L }) }")
+                        else formatStringBuilder.append("v.let·{ %L }) }")
+
+                        if (targetDecl.isMap()) formatStringBuilder.append(".toMap()")
+                        if (targetDecl.isMutableMap()) formatStringBuilder.append(".toMutableMap()")
+
+                        add(
+                            formatStringBuilder.toString(),
+                            getTypeArgumentConverter(0, source, target, mapper, classDeclaration),
+                            getTypeArgumentConverter(1, source, target, mapper, classDeclaration)
+                        )
+                    }
                     sourceDecl.classKind == ClassKind.ENUM_CLASS && targetDecl.classKind == ClassKind.ENUM_CLASS ->
                         add("%T.valueOf(it.name)", targetDecl.toClassName())
                     sourceDecl.classKind == ClassKind.ENUM_CLASS && targetDecl.isString() ->
