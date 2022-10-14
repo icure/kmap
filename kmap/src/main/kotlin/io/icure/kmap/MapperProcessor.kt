@@ -266,7 +266,7 @@ class MapperProcessor(
                         if (source.second.arguments[1].type?.resolve()?.isMarkedNullable != false) formatStringBuilder.append("v?.let·{ %L }) }")
                         else formatStringBuilder.append("v.let·{ %L }) }")
 
-                        if (targetDecl.isMap()) formatStringBuilder.append(".toMap()")
+                        formatStringBuilder.append(".toMap()")
                         if (targetDecl.isMutableMap()) formatStringBuilder.append(".toMutableMap()")
 
                         add(
