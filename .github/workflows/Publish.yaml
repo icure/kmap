@@ -27,7 +27,8 @@ jobs:
         run: |
           mkdir -p ~/.gradle/
           echo "GRADLE_USER_HOME=${HOME}/.gradle" >> $GITHUB_ENV
-          echo "repoUsername=${MAVEN_USERNAME}\nrepoPassword=${MAVEN_PASSWORD}" > ~/.gradle/gradle.properties
+          echo "repoUsername=${MAVEN_USERNAME}" > ~/.gradle/gradle.properties
+          echo "repoPassword=${MAVEN_PASSWORD}" >> ~/.gradle/gradle.properties
 
       - name: Grant Permissions to gradlew
 
