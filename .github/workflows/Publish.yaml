@@ -24,9 +24,9 @@ jobs:
         env:
           MAVEN_USERNAME: test
           MAVEN_PASSWORD: test
-          MAVEN_REPOSITORY: test
-          MAVEN_RELEASE_REPOSITORY: test
-          MAVEN_SNAPSHOT_REPOSITORY: test
+          MAVEN_REPOSITORY: "https://maven.taktik.be/content/groups/public"
+          MAVEN_RELEASE_REPOSITORY: "https://maven.taktik.be/content/groups/public"
+          MAVEN_SNAPSHOT_REPOSITORY: "https://maven.taktik.be/content/groups/public"
         run: |
           mkdir -p ~/.gradle/
           echo "GRADLE_USER_HOME=${HOME}/.gradle" >> $GITHUB_ENV
