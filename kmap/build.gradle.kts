@@ -12,10 +12,6 @@ buildscript {
         mavenCentral()
         maven {
             url = uri("https://maven.taktik.be/content/groups/public")
-            credentials {
-                username = System.getenv("MAVEN_USERNAME")
-                password = System.getenv("MAVEN_PASSWORD")
-            }
         }
     }
     dependencies {
