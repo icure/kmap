@@ -10,6 +10,7 @@ A lot of restrictions exist at this stage:
 
 The main motivation for this project is to have a working solution for generation of mappers for kotlin code heavily reliant on data classes that supports Kotlin 1.4 to 1.7
 
+
 The project is cut in two subprojects:
 
 1. The mapper-processor
