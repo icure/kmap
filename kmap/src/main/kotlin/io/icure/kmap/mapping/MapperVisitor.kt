@@ -164,19 +164,24 @@ class MapperVisitor(
 		if (source.second == target.second) {
 			add(paramName)
 		} else try {
-			val sourceTypeName = source.first.toTypeName(source.second)
-			val targetTypeName = target.first.toTypeName(target.second)
-
+			// Mapping functions for specific types defined inside the mapper. Nullability counts because you may
+			// want to define a mapping function for T? that does not consider T.
+			val selfSourceTypeName = source.first.toTypeName(source.second)
+			val selfTargetTypeName = target.first.toTypeName(target.second)
 			val selfUseFns = classDeclaration.getAllFunctions()
 				.filter { it.qualifiedName?.asString() != "equals" && it.parameters.size == 1 }
+			val selfUse = selfUseFns.find {
+				isValidMappingFunction(it, selfSourceTypeName, selfTargetTypeName)
+			}
+
+			// Mapping functions that come from other mappers passed through the constructor. Nullability does not
+			// count, as mappers are always T_ENTITY -> T_DTO
+			val sourceTypeName = source.first.toTypeName(source.second.makeNotNullable())
+			val targetTypeName = target.first.toTypeName(target.second.makeNotNullable())
 			val usesFns = mapper.mapperUses().flatMap { u ->
 				(u.declaration as? KSClassDeclaration)?.getAllFunctions()
 					?.filter { it.qualifiedName?.asString() != "equals" && it.parameters.size == 1 }
 					?.map { u to it }?.toList() ?: emptyList()
-			}
-
-			val selfUse = selfUseFns.find {
-				isValidMappingFunction(it, sourceTypeName, targetTypeName)
 			}
 			val use = usesFns.find { (_, fn) ->
 				isValidMappingFunction(fn, sourceTypeName, targetTypeName)
