@@ -405,7 +405,7 @@ class MapperVisitor(
 							cTypeName == pTypeName -> buildCodeBlock { add(prefix) }
 							(cType.declaration as? KSClassDeclaration)?.let { it.isCollection() || it.isMap() || it.isMutableMap() } == true -> {
 								val typeConverter = getTypeConverter(
-									sourceType to cType.makeNotNullable(),
+									sourceType to cType,
 									constructorParameter.type to pType,
 									mapper,
 									classDeclaration,
