@@ -164,6 +164,8 @@ class MapperVisitor(
 		if (source.second == target.second) {
 			add(paramName)
 		} else try {
+			val nullMarker = "".takeIf { source.second.nullability == Nullability.NOT_NULL } ?: "?"
+
 			// Mapping functions for specific types defined inside the mapper. Nullability counts because you may
 			// want to define a mapping function for T? that does not consider T.
 			val selfSourceTypeName = source.first.toTypeName(source.second)
@@ -202,32 +204,32 @@ class MapperVisitor(
 				selfUse != null -> add("this.%L($paramName)", selfUse.simpleName.asString())
 				use != null -> add("this.%L.%L($paramName)", useName(use.first), use.second.simpleName.asString())
 				sourceDecl.isCollection() && targetDecl.isList() ->
-					add("$paramName.map·{ x${nestLevel+1} -> %L }", getTypeArgumentConverter(0, source, target, mapper, classDeclaration, nestLevel + 1, "x"))
+					add("$paramName$nullMarker.map·{ x${nestLevel+1} -> %L }", getTypeArgumentConverter(0, source, target, mapper, classDeclaration, nestLevel + 1, "x"))
 				sourceDecl.isCollection() && targetDecl.isMutableList() ->
 					add(
-						"$paramName.map·{ x${nestLevel+1} -> %L }.toMutableList()",
+						"$paramName$nullMarker.map·{ x${nestLevel+1} -> %L }$nullMarker.toMutableList()",
 						getTypeArgumentConverter(0, source, target, mapper, classDeclaration, nestLevel + 1, "x")
 					)
 				sourceDecl.isCollection() && targetDecl.isSet() ->
 					add(
-						"$paramName.map·{ x${nestLevel+1} -> %L }.toSet()",
+						"$paramName$nullMarker.map·{ x${nestLevel+1} -> %L }$nullMarker.toSet()",
 						getTypeArgumentConverter(0, source, target, mapper, classDeclaration, nestLevel + 1, "x")
 					)
 				sourceDecl.isCollection() && targetDecl.isMutableSet() ->
 					add(
-						"$paramName.map·{ x${nestLevel+1} -> %L }.toMutableSet()",
+						"$paramName$nullMarker.map·{ x${nestLevel+1} -> %L }$nullMarker.toMutableSet()",
 						getTypeArgumentConverter(0, source, target, mapper, classDeclaration, nestLevel + 1, "x")
 					)
 				sourceDecl.isCollection() && targetDecl.isSortedSet() ->
 					add(
-						"$paramName.map·{ x${nestLevel+1} -> %L }.toSortedSet()",
+						"$paramName$nullMarker.map·{ x${nestLevel+1} -> %L }$nullMarker.toSortedSet()",
 						getTypeArgumentConverter(0, source, target, mapper, classDeclaration, nestLevel + 1, "x")
 					)
 				(sourceDecl.isMap() || sourceDecl.isMutableMap()) -> {
 					val keyIsNullable = source.second.arguments[0].type?.resolve()?.isMarkedNullable != false
 					val valueIsNullable = source.second.arguments[1].type?.resolve()?.isMarkedNullable != false
 					val formatString = buildString {
-						append("$paramName.map·{ (k$nestLevel, v$nestLevel) -> Pair(")
+						append("$paramName$nullMarker.map·{ (k$nestLevel, v$nestLevel) -> Pair(")
 
 						if (keyIsNullable) {
 							append("k$nestLevel?.let { kx${nestLevel+1} -> %L }")
@@ -240,10 +242,9 @@ class MapperVisitor(
 						} else {
 							append("%L")
 						}
-						append(")}")
+						append(")}$nullMarker.toMap()")
 
-						if (targetDecl.isMap()) append(".toMap()")
-						if (targetDecl.isMutableMap()) append(".toMutableMap()")
+						if (targetDecl.isMutableMap()) append("$nullMarker.toMutableMap()")
 					}
 
 					add(
@@ -409,7 +410,7 @@ class MapperVisitor(
 									mapper,
 									classDeclaration,
 									0,
-									"$prefix$nullMarker",
+									prefix,
 									doNotUseNestLevel = true
 								)
 								buildCodeBlock {
