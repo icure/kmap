@@ -202,7 +202,7 @@ class MapperVisitor(
 			val targetDecl = target.second.declaration as? KSClassDeclaration
 			when {
 				sourceDecl == null || targetDecl == null -> add(paramName)
-				selfUse != null && !sourceIsNullable -> add("this.%L($paramName)", selfUse.simpleName.asString())
+				selfUse != null -> add("this.%L($paramName)", selfUse.simpleName.asString())
 				use != null && !sourceIsNullable -> add("this.%L.%L($paramName)", useName(use.first), use.second.simpleName.asString())
 				sourceDecl.isCollection() && targetDecl.isList() ->
 					add("$paramName$nullMarker.map·{ x${nestLevel+1} -> %L }", getTypeArgumentConverter(0, source, target, mapper, classDeclaration, nestLevel + 1, "x"))
