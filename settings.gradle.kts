@@ -1,14 +1,18 @@
 pluginManagement {
-    val kotlinVersion: String by settings
-    val kspVersion: String by settings
-    plugins {
-        id("com.google.devtools.ksp") version kspVersion
-        kotlin("jvm") version kotlinVersion
-    }
     repositories {
         gradlePluginPortal()
+        mavenCentral()
+        maven { url = uri("https://maven.taktik.be/content/groups/public") }
     }
 }
+
+dependencyResolutionManagement {
+    repositories {
+        mavenCentral()
+        maven { url = uri("https://maven.taktik.be/content/groups/public") }
+    }
+}
+
 
 rootProject.name = "kmap-processor"
 

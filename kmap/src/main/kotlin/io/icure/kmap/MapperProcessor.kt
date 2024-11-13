@@ -29,7 +29,6 @@ import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.TypeName
 import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.buildCodeBlock
-import com.squareup.kotlinpoet.ksp.KotlinPoetKspPreview
 import com.squareup.kotlinpoet.ksp.isCollection
 import com.squareup.kotlinpoet.ksp.isList
 import com.squareup.kotlinpoet.ksp.isMap
@@ -46,12 +45,7 @@ import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.toTypeVariableName
 import io.icure.kmap.exception.ShouldDeferException
 import io.icure.kmap.option.Mapping
-import java.io.OutputStream
 import java.util.*
-
-fun OutputStream.appendText(str: String) {
-    this.write(str.toByteArray())
-}
 
 private fun KSClassDeclaration.mapperAnnotation() = annotations.find {
     it.annotationType.resolve().let {
@@ -84,13 +78,11 @@ private fun KSAnnotation.mappingsMappings() =
         }
     } ?: emptyList()
 
-@KotlinPoetKspPreview
 @KspExperimental
 class MapperProcessor(
     val codeGenerator: CodeGenerator,
     val logger: KSPLogger
 ) : SymbolProcessor {
-    val typeConverters: Map<Pair<String, String>, CodeBlock> = mapOf()
     override fun process(resolver: Resolver): List<KSAnnotated> {
         val symbols = resolver.getSymbolsWithAnnotation("org.mapstruct.Mapper")
         val invalidSymbols = symbols.filter { !it.validate() }.toList() +
@@ -112,7 +104,6 @@ class MapperProcessor(
         return invalidSymbols
     }
 
-    @KotlinPoetKspPreview
     inner class MapperVisitor(val mapper: KSAnnotation) : KSVisitorVoid() {
         override fun visitClassDeclaration(classDeclaration: KSClassDeclaration, data: Unit) {
             val packageName = classDeclaration.containingFile!!.packageName.asString()
@@ -446,7 +437,6 @@ class MapperProcessor(
     }
 }
 
-@KotlinPoetKspPreview
 @KspExperimental
 class MapperProcessorProvider : SymbolProcessorProvider {
     override fun create(
