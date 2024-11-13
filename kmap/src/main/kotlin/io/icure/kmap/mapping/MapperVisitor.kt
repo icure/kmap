@@ -165,7 +165,7 @@ class MapperVisitor(
 			add(paramName)
 		} else try {
 			val sourceIsNullable = source.second.nullability == Nullability.NULLABLE
-			val nullMarker = "".takeIf { sourceIsNullable } ?: "?"
+			val nullMarker = "".takeIf { !sourceIsNullable } ?: "?"
 
 			// Mapping functions for specific types defined inside the mapper. Nullability counts because you may
 			// want to define a mapping function for T? that does not consider T.
