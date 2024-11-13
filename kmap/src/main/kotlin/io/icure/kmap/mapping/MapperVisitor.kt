@@ -402,7 +402,7 @@ class MapperVisitor(
 						val pTypeName = constructorParameter.type.toTypeName(pType)
 
 						val prefix = listOfNotNull(source.name?.asString(), property).joinToString(".")
-						val nullMarker = "".takeIf { cType.nullability == Nullability.NOT_NULL } ?: "?"
+//						val nullMarker = "".takeIf { cType.nullability == Nullability.NOT_NULL } ?: "?"
 
 						when {
 							cTypeName == pTypeName -> buildCodeBlock { add(prefix) }
@@ -425,7 +425,10 @@ class MapperVisitor(
 									sourceType to cType,
 									constructorParameter.type to pType,
 									mapper,
-									classDeclaration
+									classDeclaration,
+									0,
+									prefix,
+									doNotUseNestLevel = true
 								)
 								buildCodeBlock {
 									add("%L", typeConverter)
