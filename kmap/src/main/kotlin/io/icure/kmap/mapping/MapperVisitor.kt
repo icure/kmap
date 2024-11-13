@@ -259,8 +259,9 @@ class MapperVisitor(
 				}
 				target.second.isMarkedNullable -> {
 					add(
-						"%L", getTypeConverter(
-							source, target.copy(second = target.second.makeNotNullable()), mapper, classDeclaration, nestLevel + 1, paramPrefix
+						"%L",
+						getTypeConverter(
+							source, target.copy(second = target.second.makeNotNullable()), mapper, classDeclaration, nestLevel, paramPrefix
 						)
 					)
 				}
@@ -404,7 +405,7 @@ class MapperVisitor(
 							}
 							else -> {
 								val typeConverter = getTypeConverter(
-									sourceType to cType.makeNotNullable(),
+									sourceType to cType,
 									constructorParameter.type to pType,
 									mapper,
 									classDeclaration
