@@ -175,16 +175,24 @@ class MapperVisitor(
 			}
 
 			// Mapping functions that come from other mappers passed through the constructor. Nullability does not
-			// count, as mappers are always T_ENTITY -> T_DTO
-			val sourceTypeName = source.first.toTypeName(source.second.makeNotNullable())
-			val targetTypeName = target.first.toTypeName(target.second.makeNotNullable())
+			// count, as mappers are usually T_ENTITY -> T_DTO
+
 			val usesFns = mapper.mapperUses().flatMap { u ->
 				(u.declaration as? KSClassDeclaration)?.getAllFunctions()
 					?.filter { it.qualifiedName?.asString() != "equals" && it.parameters.size == 1 }
 					?.map { u to it }?.toList() ?: emptyList()
 			}
-			val use = usesFns.find { (_, fn) ->
+			// First I check if there is a mapper that goes from T_ENTITY -> T_DTO, if it does not exists, I check
+			// T_ENTITY? -> T_DTO?
+			// This is to avoid an additional level of indirection through a let
+			val sourceTypeName = source.first.toTypeName(source.second.makeNotNullable())
+			val targetTypeName = target.first.toTypeName(target.second.makeNotNullable())
+			val sourceTypeNameNullable = source.first.toTypeName(source.second)
+			val targetTypeNameNullable = target.first.toTypeName(target.second)
+			val use = usesFns.firstOrNull { (_, fn) ->
 				isValidMappingFunction(fn, sourceTypeName, targetTypeName)
+			} ?: usesFns.firstOrNull { (_, fn) ->
+				isValidMappingFunction(fn, sourceTypeNameNullable, targetTypeNameNullable)
 			}
 
 			val sourceDecl = source.second.declaration as? KSClassDeclaration
