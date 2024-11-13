@@ -19,7 +19,6 @@ import com.squareup.kotlinpoet.TypeVariableName
 import com.squareup.kotlinpoet.WildcardTypeName
 import com.squareup.kotlinpoet.tags.TypeAliasTag
 
-@KotlinPoetKspPreview
 fun KSTypeArgument.toTypeName(
     resolvedType: KSType
 ): TypeName {
@@ -32,17 +31,14 @@ fun KSTypeArgument.toTypeName(
     }
 }
 
-@KotlinPoetKspPreview
 fun KSTypeReference.toResolvedTypeName(): TypeName {
     return this.toTypeName(this.resolve().declaration.typeParameters.toTypeParameterResolver(typeThroughParameterResolver()))
 }
 
-@KotlinPoetKspPreview
 fun KSType.toResolvedTypeName(): TypeName {
     return this.toTypeName(this.declaration.typeParameters.toTypeParameterResolver(typeThroughParameterResolver()))
 }
 
-@KotlinPoetKspPreview
 private fun typeThroughParameterResolver() = object : TypeParameterResolver {
     override val parametersMap: Map<String, TypeVariableName>
         get() = emptyMap()
@@ -50,14 +46,12 @@ private fun typeThroughParameterResolver() = object : TypeParameterResolver {
     override fun get(index: String) = TypeVariableName.invoke(index)
 }
 
-@KotlinPoetKspPreview
 fun KSTypeReference.toTypeName(
     resolvedType: KSType
 ): TypeName {
     return resolvedType.toTypeName(resolvedType.declaration.typeParameters.toTypeParameterResolver(typeThroughParameterResolver()), element?.typeArguments.orEmpty())
 }
 
-@KotlinPoetKspPreview
 internal fun KSType.toTypeName(
     typeParamResolver: TypeParameterResolver,
     typeArguments: List<KSTypeArgument>,
