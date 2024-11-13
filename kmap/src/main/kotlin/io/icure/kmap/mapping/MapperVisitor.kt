@@ -164,7 +164,8 @@ class MapperVisitor(
 		if (source.second == target.second) {
 			add(paramName)
 		} else try {
-			val nullMarker = "".takeIf { source.second.nullability == Nullability.NOT_NULL } ?: "?"
+			val sourceIsNullable = source.second.nullability == Nullability.NULLABLE
+			val nullMarker = "".takeIf { sourceIsNullable } ?: "?"
 
 			// Mapping functions for specific types defined inside the mapper. Nullability counts because you may
 			// want to define a mapping function for T? that does not consider T.
@@ -201,8 +202,8 @@ class MapperVisitor(
 			val targetDecl = target.second.declaration as? KSClassDeclaration
 			when {
 				sourceDecl == null || targetDecl == null -> add(paramName)
-				selfUse != null -> add("this.%L($paramName)", selfUse.simpleName.asString())
-				use != null -> add("this.%L.%L($paramName)", useName(use.first), use.second.simpleName.asString())
+				selfUse != null && !sourceIsNullable -> add("this.%L($paramName)", selfUse.simpleName.asString())
+				use != null && !sourceIsNullable -> add("this.%L.%L($paramName)", useName(use.first), use.second.simpleName.asString())
 				sourceDecl.isCollection() && targetDecl.isList() ->
 					add("$paramName$nullMarker.map·{ x${nestLevel+1} -> %L }", getTypeArgumentConverter(0, source, target, mapper, classDeclaration, nestLevel + 1, "x"))
 				sourceDecl.isCollection() && targetDecl.isMutableList() ->
@@ -253,11 +254,11 @@ class MapperVisitor(
 						getTypeArgumentConverter(1, source, target, mapper, classDeclaration, if (keyIsNullable) nestLevel + 1 else nestLevel, if (keyIsNullable) "vx" else "v")
 					)
 				}
-				sourceDecl.classKind == ClassKind.ENUM_CLASS && targetDecl.classKind == ClassKind.ENUM_CLASS ->
+				sourceDecl.classKind == ClassKind.ENUM_CLASS && targetDecl.classKind == ClassKind.ENUM_CLASS && !sourceIsNullable->
 					add("%T.valueOf($paramName.name)", targetDecl.toClassName())
-				sourceDecl.classKind == ClassKind.ENUM_CLASS && targetDecl.isString() ->
+				sourceDecl.classKind == ClassKind.ENUM_CLASS && targetDecl.isString() && !sourceIsNullable ->
 					add("$paramName.name", targetDecl.toClassName())
-				sourceDecl.isString() && targetDecl.classKind == ClassKind.ENUM_CLASS ->
+				sourceDecl.isString() && targetDecl.classKind == ClassKind.ENUM_CLASS && !sourceIsNullable ->
 					add("%L.valueOf($paramName)", targetDecl.toClassName())
 				source.second.isMarkedNullable && target.second.isMarkedNullable -> {
 					add(
