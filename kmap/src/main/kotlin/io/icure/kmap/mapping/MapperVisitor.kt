@@ -428,7 +428,7 @@ class MapperVisitor(
 									classDeclaration
 								)
 								buildCodeBlock {
-									add("$prefix$nullMarker.let·{ x0 -> %L }", typeConverter)
+									add("%L", typeConverter)
 								}
 							}
 						}
