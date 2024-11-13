@@ -190,11 +190,12 @@ class MapperVisitor(
 			// This is to avoid an additional level of indirection through a let
 			val sourceTypeName = source.first.toTypeName(source.second.makeNotNullable())
 			val targetTypeName = target.first.toTypeName(target.second.makeNotNullable())
-			val sourceTypeNameNullable = source.first.toTypeName(source.second)
-			val targetTypeNameNullable = target.first.toTypeName(target.second)
 			val use = usesFns.firstOrNull { (_, fn) ->
 				isValidMappingFunction(fn, sourceTypeName, targetTypeName)
-			} ?: usesFns.firstOrNull { (_, fn) ->
+			}
+			val sourceTypeNameNullable = source.first.toTypeName(source.second)
+			val targetTypeNameNullable = target.first.toTypeName(target.second)
+			val useNullable = usesFns.firstOrNull { (_, fn) ->
 				isValidMappingFunction(fn, sourceTypeNameNullable, targetTypeNameNullable)
 			}
 
@@ -204,6 +205,7 @@ class MapperVisitor(
 				sourceDecl == null || targetDecl == null -> add(paramName)
 				selfUse != null -> add("this.%L($paramName)", selfUse.simpleName.asString())
 				use != null && !sourceIsNullable -> add("this.%L.%L($paramName)", useName(use.first), use.second.simpleName.asString())
+				useNullable != null -> add("this.%L.%L($paramName)", useName(useNullable.first), useNullable.second.simpleName.asString())
 				sourceDecl.isCollection() && targetDecl.isList() ->
 					add("$paramName$nullMarker.map·{ x${nestLevel+1} -> %L }", getTypeArgumentConverter(0, source, target, mapper, classDeclaration, nestLevel + 1, "x"))
 				sourceDecl.isCollection() && targetDecl.isMutableList() ->
