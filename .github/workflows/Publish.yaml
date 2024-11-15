@@ -1,0 +1,43 @@
+name: Publish
+
+on:
+  pull_request:
+    types:
+      - closed
+    branches:
+      - 'main'
+jobs:
+  publish:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Setup JDK
+        uses: actions/setup-java@v2
+        with:
+          java-version: '17'
+          distribution: 'adopt'
+          cache: gradle
+
+      - name: Set repo username and password
+        env:
+          MAVEN_USERNAME: ${{ secrets.MAVEN_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.MAVEN_PASSWORD }}
+          MAVEN_REPOSITORY: ${{ secrets.MAVEN_REPOSITORY }}
+          MAVEN_RELEASE_REPOSITORY: ${{ secrets.MAVEN_RELEASE_REPOSITORY }}
+          MAVEN_SNAPSHOT_REPOSITORY: ${{ secrets.MAVEN_SNAPSHOT_REPOSITORY }}
+        run: |
+          mkdir -p ~/.gradle/
+          echo "GRADLE_USER_HOME=${HOME}/.gradle" >> $GITHUB_ENV
+          echo "repoUsername=${MAVEN_USERNAME}" > ~/.gradle/gradle.properties
+          echo "repoPassword=${MAVEN_PASSWORD}" >> ~/.gradle/gradle.properties
+          echo "mavenRepository=${MAVEN_REPOSITORY}" >> ~/.gradle/gradle.properties
+          echo "mavenReleasesRepository=${MAVEN_RELEASE_REPOSITORY}" >> ~/.gradle/gradle.properties
+          echo "mavenSnapshotsRepository=${MAVEN_SNAPSHOT_REPOSITORY}" >> ~/.gradle/gradle.properties
+
+      - name: Publish
+        run: gradle :kmap:publish -x test
