@@ -1,0 +1,33 @@
+[versions]
+kotlinPoet = "1.16.0"
+mapstruct = "1.4.2.Final"
+kotlin = "1.9.25"
+ksp = "1.9.25-1.0.20"
+logback = "1.5.11"
+slf4j = "1.7.36"
+
+[libraries]
+kotlinPoetKsp = { group = "com.squareup", name = "kotlinpoet-ksp", version.ref = "kotlinPoet" }
+kotlinPoet = { group = "com.squareup", name = "kotlinpoet", version.ref = "kotlinPoet" }
+mapstruct = { group = "org.mapstruct", name = "mapstruct", version.ref = "mapstruct" }
+logbackClassic = {group = "ch.qos.logback", name = "logback-classic", version.ref = "logback" }
+logbackAccess = {group = "ch.qos.logback", name = "logback-access", version.ref = "logback" }
+slf4jApi = { group = "org.slf4j", name = "slf4j-api", version.ref = "slf4j" }
+slf4jJul = { group = "org.slf4j", name = "jul-to-slf4j", version.ref = "slf4j" }
+slf4jJcl = { group = "org.slf4j", name = "jcl-over-slf4j", version.ref = "slf4j" }
+slf4jLog4j = { group = "org.slf4j", name = "log4j-over-slf4j", version.ref = "slf4j" }
+kotlinKsp = { group = "com.google.devtools.ksp", name = "symbol-processing-api", version.ref = "ksp" }
+kotlinReflect = { group = "org.jetbrains.kotlin", name = "kotlin-reflect", version = "1.6.21" }
+springContext = { group = "org.springframework", name = "spring-context", version = "5.3.10" }
+
+[bundles]
+kotlinPoet = ["kotlinPoetKsp", "kotlinPoet"]
+logback = ["logbackClassic", "logbackAccess"]
+slf4j = ["slf4jApi", "slf4jJul", "slf4jJcl", "slf4jLog4j"]
+
+[plugins]
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+mavenRepository = { id = "com.taktik.gradle.maven-repository", version = "1.0.7" }
+gitVersion = { id = "com.taktik.gradle.git-version", version = "2.0.8-gb47b2d0e35" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+licenseReport = { id = "com.github.jk1.dependency-license-report", version = "2.0" }
