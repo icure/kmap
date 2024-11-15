@@ -8,7 +8,7 @@ A lot of restrictions exist at this stage:
 * All properties have to be set through the constructor
 * @Mappings and @Mapping annotation are not supported yet
 
-The main motivation for this project is to have a working solution for generation of mappers for kotlin code heavily reliant on data classes that supports Kotlin 1.4 to 1.7
+The main motivation for this project is to have a working solution for generation of mappers for kotlin code heavily reliant on data classes that supports Kotlin 1.4 to 1.9
 
 
 The project is cut in two subprojects:
