@@ -36,13 +36,13 @@ dependencies {
     implementation("com.google.devtools.ksp:symbol-processing-api:$kspVersion")
     implementation(group = "org.mapstruct", name = "mapstruct", version = "1.4.2.Final")
 
-    implementation(group = "ch.qos.logback", name = "logback-classic", version = "1.2.11")
-    implementation(group = "ch.qos.logback", name = "logback-access", version = "1.2.11")
+    implementation(group = "ch.qos.logback", name = "logback-classic", version = "1.5.18")
+    implementation(group = "ch.qos.logback", name = "logback-access", version = "1.5.18")
 
-    implementation(group = "org.slf4j", name = "slf4j-api", version = "1.7.36")
-    implementation(group = "org.slf4j", name = "jul-to-slf4j", version = "1.7.36")
-    implementation(group = "org.slf4j", name = "jcl-over-slf4j", version = "1.7.36")
-    implementation(group = "org.slf4j", name = "log4j-over-slf4j", version = "1.7.36")
+    implementation(group = "org.slf4j", name = "slf4j-api", version = "2.0.17")
+    implementation(group = "org.slf4j", name = "jul-to-slf4j", version = "2.0.17")
+    implementation(group = "org.slf4j", name = "jcl-over-slf4j", version = "2.0.17")
+    implementation(group = "org.slf4j", name = "log4j-over-slf4j", version = "2.0.17")
 }
 
 sourceSets.main {
