@@ -5,6 +5,7 @@ val kpv = "1.11.0"
 
 plugins {
     kotlin("jvm")
+    `maven-publish`
 }
 
 buildscript {
@@ -19,7 +20,6 @@ buildscript {
 }
 
 apply(plugin = "git-version")
-apply(plugin = "maven-repository")
 val gitVersion: String? by project
 
 group = "io.icure"
