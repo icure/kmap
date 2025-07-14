@@ -5,7 +5,8 @@ val kpv = "1.11.0"
 
 plugins {
     kotlin("jvm")
-    `maven-publish`
+    id("com.taktik.gradle.maven-repository") version "1.0.7"
+    id("com.taktik.gradle.git-version") version "2.0.8-gb47b2d0e35"
 }
 
 buildscript {
@@ -14,12 +15,15 @@ buildscript {
         maven { url = uri("https://maven.taktik.be/content/groups/public") }
     }
     dependencies {
-        classpath("com.taktik.gradle:gradle-plugin-git-version:2.0.2")
-        classpath("com.taktik.gradle:gradle-plugin-maven-repository:1.0.2")
+        classpath("com.taktik.gradle:gradle-plugin-git-version:2.0.8-gb47b2d0e35")
+        classpath("com.taktik.gradle:gradle-plugin-maven-repository:1.0.7")
     }
 }
 
-apply(plugin = "git-version")
+apply(plugin = "kotlin")
+apply(plugin = "maven-publish")
+
+
 val gitVersion: String? by project
 
 group = "io.icure"
