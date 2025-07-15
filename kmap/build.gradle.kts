@@ -24,7 +24,6 @@ dependencies {
     implementation(libs.bundles.slf4j)
 
     implementation(libs.kotlinKsp)
-    implementation(libs.mapstruct)
 }
 
 sourceSets.main {

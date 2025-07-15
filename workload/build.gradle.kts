@@ -17,7 +17,6 @@ dependencies {
     implementation(project(":kmap"))
     ksp(project(":kmap"))
 
-    implementation(libs.mapstruct)
     implementation(libs.kotlinReflect)
     implementation(libs.springContext)
 }
