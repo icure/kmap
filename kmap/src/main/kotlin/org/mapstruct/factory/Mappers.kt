@@ -44,11 +44,11 @@ object Mappers {
      *
      * @return An instance of the given mapper type.
     </T> */
-    fun <T> getMapper(clazz: Class<T?>): T? {
+    fun <T> getMapper(clazz: Class<T>): T {
         try {
             val classLoaders = collectClassLoaders(clazz.getClassLoader())
 
-            return getMapper<T?>(clazz, classLoaders)
+            return getMapper<T>(clazz, classLoaders)
         } catch (e: ClassNotFoundException) {
             throw RuntimeException(e)
         } catch (e: NoSuchMethodException) {
@@ -57,9 +57,9 @@ object Mappers {
     }
 
     @Throws(ClassNotFoundException::class, NoSuchMethodException::class)
-    private fun <T> getMapper(mapperType: Class<T?>, classLoaders: Iterable<ClassLoader>): T? {
+    private fun <T> getMapper(mapperType: Class<T>, classLoaders: Iterable<ClassLoader>): T {
         for (classLoader in classLoaders) {
-            val mapper = doGetMapper<T?>(mapperType, classLoader)
+            val mapper = doGetMapper<T>(mapperType, classLoader)
             if (mapper != null) {
                 return mapper
             }
@@ -69,15 +69,15 @@ object Mappers {
     }
 
     @Throws(NoSuchMethodException::class)
-    private fun <T> doGetMapper(clazz: Class<T?>, classLoader: ClassLoader): T? {
+    private fun <T> doGetMapper(clazz: Class<T>, classLoader: ClassLoader): T? {
         try {
-            @Suppress("UNCHECKED_CAST") val implementation = classLoader.loadClass(clazz.getName() + IMPLEMENTATION_SUFFIX) as Class<T?>
+            @Suppress("UNCHECKED_CAST") val implementation = classLoader.loadClass(clazz.getName() + IMPLEMENTATION_SUFFIX) as Class<T>
             val constructor = implementation.getDeclaredConstructor()
             constructor.setAccessible(true)
 
             return constructor.newInstance()
         } catch (e: ClassNotFoundException) {
-            return getMapperFromServiceLoader<T?>(clazz, classLoader)
+            return getMapperFromServiceLoader(clazz, classLoader)
         } catch (e: InstantiationException) {
             throw RuntimeException(e)
         } catch (e: InvocationTargetException) {
@@ -97,20 +97,20 @@ object Mappers {
      *
      * @since 1.3
     </T> */
-    fun <T> getMapperClass(clazz: Class<T?>): Class<out T?> {
+    fun <T> getMapperClass(clazz: Class<T>): Class<out T> {
         try {
             val classLoaders = collectClassLoaders(clazz.getClassLoader())
 
-            return getMapperClass<T?>(clazz, classLoaders)
+            return getMapperClass<T>(clazz, classLoaders)
         } catch (e: ClassNotFoundException) {
             throw RuntimeException(e)
         }
     }
 
     @Throws(ClassNotFoundException::class)
-    private fun <T> getMapperClass(mapperType: Class<T?>, classLoaders: Iterable<ClassLoader>): Class<out T?> {
+    private fun <T> getMapperClass(mapperType: Class<T>, classLoaders: Iterable<ClassLoader>): Class<out T> {
         for (classLoader in classLoaders) {
-            val mapperClass = doGetMapperClass<T?>(mapperType, classLoader)
+            val mapperClass = doGetMapperClass<T>(mapperType, classLoader)
             if (mapperClass != null) {
                 return mapperClass
             }
@@ -119,21 +119,21 @@ object Mappers {
         throw ClassNotFoundException("Cannot find implementation for " + mapperType.getName())
     }
 
-    private fun <T> doGetMapperClass(clazz: Class<T?>, classLoader: ClassLoader): Class<out T?>? {
+    private fun <T> doGetMapperClass(clazz: Class<T>, classLoader: ClassLoader): Class<out T>? {
         try {
-            @Suppress("UNCHECKED_CAST") return classLoader.loadClass(clazz.getName() + IMPLEMENTATION_SUFFIX) as Class<out T?>?
+            @Suppress("UNCHECKED_CAST") return classLoader.loadClass(clazz.getName() + IMPLEMENTATION_SUFFIX) as Class<out T>?
         } catch (e: ClassNotFoundException) {
-            val mapper = getMapperFromServiceLoader<T?>(clazz, classLoader)
+            val mapper = getMapperFromServiceLoader<T>(clazz, classLoader)
             if (mapper != null) {
-                return mapper.javaClass as Class<out T?>
+                return mapper.javaClass as Class<out T>
             }
 
             return null
         }
     }
 
-    private fun <T> getMapperFromServiceLoader(clazz: Class<T?>, classLoader: ClassLoader?): T? {
-        val loader = ServiceLoader.load<T?>(clazz, classLoader)
+    private fun <T> getMapperFromServiceLoader(clazz: Class<T>, classLoader: ClassLoader?): T? {
+        val loader = ServiceLoader.load<T>(clazz, classLoader)
 
         for (mapper in loader) {
             if (mapper != null) {
