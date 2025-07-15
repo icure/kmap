@@ -71,7 +71,7 @@ object Mappers {
     @Throws(NoSuchMethodException::class)
     private fun <T> doGetMapper(clazz: Class<T?>, classLoader: ClassLoader): T? {
         try {
-            val implementation = classLoader.loadClass(clazz.getName() + IMPLEMENTATION_SUFFIX) as Class<T?>
+            @Suppress("UNCHECKED_CAST") val implementation = classLoader.loadClass(clazz.getName() + IMPLEMENTATION_SUFFIX) as Class<T?>
             val constructor = implementation.getDeclaredConstructor()
             constructor.setAccessible(true)
 
@@ -121,7 +121,7 @@ object Mappers {
 
     private fun <T> doGetMapperClass(clazz: Class<T?>, classLoader: ClassLoader): Class<out T?>? {
         try {
-            return classLoader.loadClass(clazz.getName() + IMPLEMENTATION_SUFFIX) as Class<out T?>?
+            @Suppress("UNCHECKED_CAST") return classLoader.loadClass(clazz.getName() + IMPLEMENTATION_SUFFIX) as Class<out T?>?
         } catch (e: ClassNotFoundException) {
             val mapper = getMapperFromServiceLoader<T?>(clazz, classLoader)
             if (mapper != null) {
