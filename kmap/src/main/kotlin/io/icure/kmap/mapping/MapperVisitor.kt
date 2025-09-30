@@ -97,6 +97,7 @@ class MapperVisitor(
 							if (funDecl.isAbstract) {
 								funDecl.returnType?.let { rt ->
 									val param = funDecl.parameters.first()
+									val otherParams = funDecl.parameters.drop(1)
 									val mappings = funDecl.annotations.find { annotation ->
 										annotation.annotationType.resolve().let {
 											it.declaration.packageName.asString() == "org.mapstruct" && it.declaration.simpleName.asString() == "Mappings"
@@ -109,6 +110,11 @@ class MapperVisitor(
 											.addModifiers(KModifier.OVERRIDE)
 											.addTypeVariables(funDecl.typeParameters.map { it.toTypeVariableName() })
 											.addParameter(param.name!!.asString(), param.type.toResolvedTypeName())
+											.apply {
+												otherParams.forEach {
+													addParameter(it.name!!.asString(), it.type.toResolvedTypeName())
+												}
+											}
 											.also {
 												if(param.type.hasDeprecatedProperties()) {
 													it.addAnnotation(AnnotationSpec.builder(ClassName("kotlin", "Suppress")).addMember("%S", "DEPRECATION").build())
@@ -359,6 +365,8 @@ class MapperVisitor(
 						val trimmed = mapping.expression.trim()
 						if (trimmed.startsWith("kotlin(")) {
 							mapping.target!! to trimmed.replace("""kotlin\((.+)\)""".toRegex(), "$1")
+						} else if (trimmed.startsWith("lambda(")) {
+							mapping.target!! to trimmed.removePrefix("lambda(").removeSuffix(")").let { "$it(${listOfNotNull(source.name?.asString(), mapping.target).joinToString(".")})"}
 						} else {
 							logger.error("Bad expression format for ${mapping.target} when mapping from ${sourceClass.toClassName()} to ${targetClass.toClassName()}")
 							null
