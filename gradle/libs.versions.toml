@@ -2,9 +2,9 @@
 kotlinPoet = "1.16.0"
 kotlin = "2.2.0"
 ksp = "2.2.0-2.0.2"
-logback = "1.5.18"
+logback = "1.5.22"
 slf4j = "2.0.17"
-spring = "6.2.8"
+spring = "6.5.1"
 
 [libraries]
 kotlinPoetKsp = { group = "com.squareup", name = "kotlinpoet-ksp", version.ref = "kotlinPoet" }
