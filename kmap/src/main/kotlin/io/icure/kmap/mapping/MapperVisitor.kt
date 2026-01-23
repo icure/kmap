@@ -57,6 +57,7 @@ class MapperVisitor(
 			fileName = classDeclaration.simpleName.asString()
 		).apply {
 			val uses = mapper.mapperUses()
+			val defaultPassOnParameterDetails = mapper.mapperPassOnDefaults()
 			addType(
 				TypeSpec.classBuilder(className).apply {
 					when (mapper.mapperComponentModel()) {
@@ -89,6 +90,18 @@ class MapperVisitor(
 						)
 					}
 				}.build())
+					.apply {
+						defaultPassOnParameterDetails.forEach {
+							addProperty(
+								PropertySpec.builder(
+									it.name,
+									it.type.toClassName()
+								).initializer(it.defaultValueExpression)
+									.addModifiers(KModifier.PRIVATE)
+									.build()
+							)
+						}
+					}
 					.addProperties(uses.map {
 						val propName = useName(it)
 						PropertySpec.builder(propName, it.toClassName()).initializer(propName).build()
@@ -98,6 +111,20 @@ class MapperVisitor(
 								funDecl.returnType?.let { rt ->
 									val param = funDecl.parameters.first()
 									val otherParams = funDecl.parameters.drop(1)
+									val functionPassOnParameters = otherParams.mapNotNull { p ->
+										val passOnAnnotation = p.passOnAnnotation()
+										if (passOnAnnotation != null) {
+											val matchName =
+												passOnAnnotation.arguments.firstOrNull { it.name!!.asString() == "matchParameterName" }?.value as Boolean
+											PassOnParameterDetails(
+												name = p.name!!.asString(),
+												type = p.type.resolve(),
+												matchName = matchName,
+											)
+										} else {
+											null
+										}
+									}
 									val mappings = funDecl.annotations.find { annotation ->
 										annotation.annotationType.resolve().let {
 											it.declaration.packageName.asString() == "org.mapstruct" && it.declaration.simpleName.asString() == "Mappings"
@@ -116,8 +143,15 @@ class MapperVisitor(
 												}
 											}
 											.also {
-												if(param.type.hasDeprecatedProperties()) {
-													it.addAnnotation(AnnotationSpec.builder(ClassName("kotlin", "Suppress")).addMember("%S", "DEPRECATION").build())
+												if (param.type.hasDeprecatedProperties()) {
+													it.addAnnotation(
+														AnnotationSpec.builder(
+															ClassName(
+																"kotlin",
+																"Suppress"
+															)
+														).addMember("%S", "DEPRECATION").build()
+													)
 												}
 											}
 											.returns(rt.toResolvedTypeName()).addCode(
@@ -126,7 +160,8 @@ class MapperVisitor(
 													rt.resolve(),
 													mapper,
 													classDeclaration,
-													mappings
+													mappings,
+													functionPassOnParameters + defaultPassOnParameterDetails,
 												)
 											)
 											.build()
@@ -158,6 +193,7 @@ class MapperVisitor(
 		target: Pair<KSTypeReference, KSType>,
 		mapper: KSAnnotation,
 		classDeclaration: KSClassDeclaration,
+		availablePassOnParameters: List<PassOnParameterDetails>,
 		nestLevel: Int = 0,
 		paramPrefix: String = "x",
 		doNotUseNestLevel: Boolean = false
@@ -177,10 +213,9 @@ class MapperVisitor(
 			// want to define a mapping function for T? that does not consider T.
 			val selfSourceTypeName = source.first.toTypeName(source.second)
 			val selfTargetTypeName = target.first.toTypeName(target.second)
-			val selfUseFns = classDeclaration.getAllFunctions()
-				.filter { it.qualifiedName?.asString() != "equals" && it.parameters.size == 1 }
+			val selfUseFns = classDeclaration.getAllFunctions().filter { it.qualifiedName?.asString() != "equals" && it.parameters.isNotEmpty() }
 			val selfUse = selfUseFns.find {
-				isValidMappingFunction(it, selfSourceTypeName, selfTargetTypeName)
+				isValidMappingFunction(it, selfSourceTypeName, selfTargetTypeName, availablePassOnParameters)
 			}
 
 			// Mapping functions that come from other mappers passed through the constructor. Nullability does not
@@ -188,7 +223,7 @@ class MapperVisitor(
 
 			val usesFns = mapper.mapperUses().flatMap { u ->
 				(u.declaration as? KSClassDeclaration)?.getAllFunctions()
-					?.filter { it.qualifiedName?.asString() != "equals" && it.parameters.size == 1 }
+					?.filter { it.qualifiedName?.asString() != "equals" && it.parameters.isNotEmpty() }
 					?.map { u to it }?.toList() ?: emptyList()
 			}
 			// First I check if there is a mapper that goes from T_ENTITY -> T_DTO, if it does not exists, I check
@@ -197,43 +232,126 @@ class MapperVisitor(
 			val sourceTypeName = source.first.toTypeName(source.second.makeNotNullable())
 			val targetTypeName = target.first.toTypeName(target.second.makeNotNullable())
 			val use = usesFns.firstOrNull { (_, fn) ->
-				isValidMappingFunction(fn, sourceTypeName, targetTypeName)
+				isValidMappingFunction(fn, sourceTypeName, targetTypeName, availablePassOnParameters)
 			}
 			val sourceTypeNameNullable = source.first.toTypeName(source.second)
 			val targetTypeNameNullable = target.first.toTypeName(target.second)
 			val useNullable = usesFns.firstOrNull { (_, fn) ->
-				isValidMappingFunction(fn, sourceTypeNameNullable, targetTypeNameNullable)
+				isValidMappingFunction(fn, sourceTypeNameNullable, targetTypeNameNullable, availablePassOnParameters)
+			}
+
+			fun addPassOnParametersFor(function: KSFunctionDeclaration) {
+				function.parameters.drop(1).forEach {
+					add(", " )
+					val passOnParameter = it.getCorrespondingPassOnParameter(availablePassOnParameters)!!
+					add(passOnParameter.name)
+				}
 			}
 
 			val sourceDecl = source.second.declaration as? KSClassDeclaration
 			val targetDecl = target.second.declaration as? KSClassDeclaration
 			when {
 				sourceDecl == null || targetDecl == null -> add(paramName)
-				selfUse != null -> add("this.%L($paramName)", selfUse.simpleName.asString())
-				use != null && !sourceIsNullable -> add("this.%L.%L($paramName)", useName(use.first), use.second.simpleName.asString())
-				useNullable != null -> add("this.%L.%L($paramName)", useName(useNullable.first), useNullable.second.simpleName.asString())
+				selfUse != null -> {
+					add("this.%L($paramName", selfUse.simpleName.asString())
+					addPassOnParametersFor(selfUse)
+					add(")")
+				}
+				use != null && !sourceIsNullable -> {
+					add(
+						"this.%L.%L($paramName",
+						useName(use.first),
+						use.second.simpleName.asString()
+					)
+					addPassOnParametersFor(use.second)
+					add(")")
+				}
+
+				useNullable != null -> {
+					add(
+						"this.%L.%L($paramName",
+						useName(useNullable.first),
+						useNullable.second.simpleName.asString()
+					)
+					addPassOnParametersFor(useNullable.second)
+					add(")")
+				}
+
 				sourceDecl.isCollection() && targetDecl.isList() ->
-					add("$paramName$nullMarker.map·{ x${nestLevel+1} -> %L }", getTypeArgumentConverter(0, source, target, mapper, classDeclaration, nestLevel + 1, "x"))
+					add(
+						"$paramName$nullMarker.map·{ x${nestLevel + 1} -> %L }",
+						getTypeArgumentConverter(
+							0,
+							source,
+							target,
+							mapper,
+							classDeclaration,
+							nestLevel + 1,
+							"x",
+							availablePassOnParameters
+						)
+					)
+
 				sourceDecl.isCollection() && targetDecl.isMutableList() ->
 					add(
-						"$paramName$nullMarker.map·{ x${nestLevel+1} -> %L }$nullMarker.toMutableList()",
-						getTypeArgumentConverter(0, source, target, mapper, classDeclaration, nestLevel + 1, "x")
+						"$paramName$nullMarker.map·{ x${nestLevel + 1} -> %L }$nullMarker.toMutableList()",
+						getTypeArgumentConverter(
+							0,
+							source,
+							target,
+							mapper,
+							classDeclaration,
+							nestLevel + 1,
+							"x",
+							availablePassOnParameters
+						)
 					)
+
 				sourceDecl.isCollection() && targetDecl.isSet() ->
 					add(
-						"$paramName$nullMarker.map·{ x${nestLevel+1} -> %L }$nullMarker.toSet()",
-						getTypeArgumentConverter(0, source, target, mapper, classDeclaration, nestLevel + 1, "x")
+						"$paramName$nullMarker.map·{ x${nestLevel + 1} -> %L }$nullMarker.toSet()",
+						getTypeArgumentConverter(
+							0,
+							source,
+							target,
+							mapper,
+							classDeclaration,
+							nestLevel + 1,
+							"x",
+							availablePassOnParameters
+						)
 					)
+
 				sourceDecl.isCollection() && targetDecl.isMutableSet() ->
 					add(
-						"$paramName$nullMarker.map·{ x${nestLevel+1} -> %L }$nullMarker.toMutableSet()",
-						getTypeArgumentConverter(0, source, target, mapper, classDeclaration, nestLevel + 1, "x")
+						"$paramName$nullMarker.map·{ x${nestLevel + 1} -> %L }$nullMarker.toMutableSet()",
+						getTypeArgumentConverter(
+							0,
+							source,
+							target,
+							mapper,
+							classDeclaration,
+							nestLevel + 1,
+							"x",
+							availablePassOnParameters
+						)
 					)
+
 				sourceDecl.isCollection() && targetDecl.isSortedSet() ->
 					add(
-						"$paramName$nullMarker.map·{ x${nestLevel+1} -> %L }$nullMarker.toSortedSet()",
-						getTypeArgumentConverter(0, source, target, mapper, classDeclaration, nestLevel + 1, "x")
+						"$paramName$nullMarker.map·{ x${nestLevel + 1} -> %L }$nullMarker.toSortedSet()",
+						getTypeArgumentConverter(
+							0,
+							source,
+							target,
+							mapper,
+							classDeclaration,
+							nestLevel + 1,
+							"x",
+							availablePassOnParameters
+						)
 					)
+
 				(sourceDecl.isMap() || sourceDecl.isMutableMap()) -> {
 					val keyIsNullable = source.second.arguments[0].type?.resolve()?.isMarkedNullable != false
 					val valueIsNullable = source.second.arguments[1].type?.resolve()?.isMarkedNullable != false
@@ -241,13 +359,13 @@ class MapperVisitor(
 						append("$paramName$nullMarker.map·{ (k$nestLevel, v$nestLevel) -> Pair(")
 
 						if (keyIsNullable) {
-							append("k$nestLevel?.let { kx${nestLevel+1} -> %L }")
+							append("k$nestLevel?.let { kx${nestLevel + 1} -> %L }")
 						} else {
 							append("%L")
 						}
 						append(", ")
 						if (valueIsNullable) {
-							append("v$nestLevel?.let { vx${nestLevel+1} -> %L }")
+							append("v$nestLevel?.let { vx${nestLevel + 1} -> %L }")
 						} else {
 							append("%L")
 						}
@@ -258,31 +376,56 @@ class MapperVisitor(
 
 					add(
 						formatString,
-						getTypeArgumentConverter(0, source, target, mapper, classDeclaration, if (keyIsNullable) nestLevel + 1 else nestLevel, if (keyIsNullable) "kx" else "k"),
-						getTypeArgumentConverter(1, source, target, mapper, classDeclaration, if (keyIsNullable) nestLevel + 1 else nestLevel, if (keyIsNullable) "vx" else "v")
+						getTypeArgumentConverter(
+							0,
+							source,
+							target,
+							mapper,
+							classDeclaration,
+							if (keyIsNullable) nestLevel + 1 else nestLevel,
+							if (keyIsNullable) "kx" else "k",
+							availablePassOnParameters
+						),
+						getTypeArgumentConverter(
+							1,
+							source,
+							target,
+							mapper,
+							classDeclaration,
+							if (keyIsNullable) nestLevel + 1 else nestLevel,
+							if (keyIsNullable) "vx" else "v",
+							availablePassOnParameters
+						),
 					)
 				}
-				sourceDecl.classKind == ClassKind.ENUM_CLASS && targetDecl.classKind == ClassKind.ENUM_CLASS && !sourceIsNullable->
+
+				sourceDecl.classKind == ClassKind.ENUM_CLASS && targetDecl.classKind == ClassKind.ENUM_CLASS && !sourceIsNullable ->
 					add("%T.valueOf($paramName.name)", targetDecl.toClassName())
+
 				sourceDecl.classKind == ClassKind.ENUM_CLASS && targetDecl.isString() && !sourceIsNullable ->
 					add("$paramName.name", targetDecl.toClassName())
+
 				sourceDecl.isString() && targetDecl.classKind == ClassKind.ENUM_CLASS && !sourceIsNullable ->
 					add("%L.valueOf($paramName)", targetDecl.toClassName())
+
 				source.second.isMarkedNullable && target.second.isMarkedNullable -> {
 					add(
-						"$paramName?.let·{ x${nestLevel+1} -> %L }", getTypeConverter(
+						"$paramName?.let·{ x${nestLevel + 1} -> %L }", getTypeConverter(
 							source.copy(second = source.second.makeNotNullable()),
 							target.copy(second = target.second.makeNotNullable()),
 							mapper,
 							classDeclaration,
+							availablePassOnParameters,
 							nestLevel + 1,
 							"x"
 						)
 					)
 				}
+
 				target.second.isMarkedNullable -> {
 					add(paramName)
 				}
+
 				else -> {
 					val mapperClassName = classDeclaration.toClassName()
 					val missingSelfUseFns =
@@ -292,7 +435,8 @@ class MapperVisitor(
 						usesFns.filter { (_, fn) -> !fn.validate() || fn.returnType?.validate() == false }
 							.map { (u, fn) -> u.toTypeName().toString() to fn.qualifiedName?.asString() }.toList()
 					if (missingSelfUseFns.isNotEmpty() || missingUsesFns.isNotEmpty()) {
-						logger.warn("No mapper was found for $sourceTypeName -> $targetTypeName in class $mapperClassName during round, those mappers cannot be validated: ${
+						logger.warn(
+							"No mapper was found for $sourceTypeName -> $targetTypeName in class $mapperClassName during round, those mappers cannot be validated: ${
 							(missingSelfUseFns + missingUsesFns).joinToString(",") { (a, b) -> "$a.$b" }
 						} do not validate")
 						throw ShouldDeferException()
@@ -321,12 +465,14 @@ class MapperVisitor(
 		mapper: KSAnnotation,
 		classDeclaration: KSClassDeclaration,
 		nestLevel: Int,
-		paramPrefix: String
+		paramPrefix: String,
+		availablePassOnParameters: List<PassOnParameterDetails>,
 	) = getTypeConverter(
 		source.first.element!!.typeArguments[idx].type!!.let { it to it.resolve() },
 		target.first.element!!.typeArguments[idx].type!!.let { it to it.resolve() },
 		mapper,
 		classDeclaration,
+		availablePassOnParameters,
 		nestLevel,
 		paramPrefix
 	)
@@ -334,18 +480,40 @@ class MapperVisitor(
 	private fun isValidMappingFunction(
 		it: KSFunctionDeclaration,
 		sourceTypeName: TypeName,
-		targetTypeName: TypeName
+		targetTypeName: TypeName,
+		availablePassOnParameters: List<PassOnParameterDetails>
 	) = it.parameters[0].validate() &&
 		it.returnType?.validate() == true &&
 		it.parameters[0].type.toResolvedTypeName() == sourceTypeName &&
-		it.returnType?.toResolvedTypeName() == targetTypeName
+		it.returnType?.toResolvedTypeName() == targetTypeName &&
+		it.parameters.drop(1).all {
+			it.getCorrespondingPassOnParameter(availablePassOnParameters) != null
+		}
+
+	private fun KSValueParameter.getCorrespondingPassOnParameter(
+		availablePassOnParameters: List<PassOnParameterDetails>
+	): PassOnParameterDetails? =
+		if (passOnAnnotation() != null) {
+			val matchingPassOnParameters = availablePassOnParameters.filter { p ->
+				(!p.matchName || p.name == this.name!!.getShortName()) &&
+					p.type == this.type.resolve()
+			}
+			if (matchingPassOnParameters.isEmpty()) {
+				logger.error("No pass on parameter found for ${this.name}")
+			} else if (matchingPassOnParameters.size > 1) {
+				logger.error("Multiple matching pass on parameters found for ${this.name}")
+			}
+			matchingPassOnParameters.singleOrNull()
+		} else null
+
 
 	private fun mapUsingPrimaryConstructor(
 		source: KSValueParameter,
 		target: KSType,
 		mapper: KSAnnotation,
 		classDeclaration: KSClassDeclaration,
-		mappings: KSAnnotation?
+		mappings: KSAnnotation?,
+		availablePassOnParameters: List<PassOnParameterDetails>,
 	) = buildCodeBlock {
 		val sourceClass = (source.type.resolve().declaration as? KSClassDeclaration)
 			?: throw IllegalStateException("Return type should be a Class")
@@ -415,6 +583,7 @@ class MapperVisitor(
 									constructorParameter.type to pType,
 									mapper,
 									classDeclaration,
+									availablePassOnParameters,
 									0,
 									prefix,
 									doNotUseNestLevel = true
@@ -429,6 +598,7 @@ class MapperVisitor(
 									constructorParameter.type to pType,
 									mapper,
 									classDeclaration,
+									availablePassOnParameters,
 									0,
 									prefix,
 									doNotUseNestLevel = true

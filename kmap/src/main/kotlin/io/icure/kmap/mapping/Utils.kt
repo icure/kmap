@@ -4,6 +4,7 @@ import com.google.devtools.ksp.symbol.KSAnnotation
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSType
 import com.google.devtools.ksp.symbol.KSTypeReference
+import com.google.devtools.ksp.symbol.KSValueParameter
 import io.icure.kmap.Mapper
 import io.icure.kmap.option.Mapping
 
@@ -26,6 +27,27 @@ internal fun KSAnnotation.mapperUses() =
 		@Suppress("UNCHECKED_CAST")
 		(it.value as Collection<KSType>).toList()
 	} ?: emptyList()
+
+internal fun KSAnnotation.mapperPassOnDefaults() =
+	arguments.first { it.name!!.asString() == "defaultPassOnParameters" }.let { passOnDefaults ->
+		fun getDefaultPassOnParameterDetails(passOnDefault: Any?): DefaultPassOnParameterDetails {
+			passOnDefault as KSAnnotation
+			val parameterName = passOnDefault.arguments.first { it.name!!.asString() == "parameterName" }.value as String
+			val type = passOnDefault.arguments.first { it.name!!.asString() == "type" }.value as KSType
+			val valueExpression = passOnDefault.arguments.first { it.name!!.asString() == "valueExpression" }.value as String
+			val matchParameterName = passOnDefault.arguments.first { it.name!!.asString() == "matchParameterName" }.value as Boolean
+			return DefaultPassOnParameterDetails(
+				sourceName = parameterName,
+				type = type,
+				defaultValueExpression = valueExpression,
+				matchName = matchParameterName,
+			)
+		}
+		(passOnDefaults.value as? List<*>)?.map { getDefaultPassOnParameterDetails(it) }
+			?: (passOnDefaults.value as Array<*>).map { getDefaultPassOnParameterDetails(it) }
+	}
+
+internal fun KSValueParameter.passOnAnnotation() = annotations.firstOrNull { it.shortName.getShortName() == "PassOnParameter" }
 
 /**
  * @return the mapper component model, as defined in [Mapper.componentModel].

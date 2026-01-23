@@ -299,5 +299,9 @@ annotation class Mapper(
      *
      * @since 1.4
      */
-    val unexpectedValueMappingException: KClass<out Exception> = IllegalArgumentException::class
+    val unexpectedValueMappingException: KClass<out Exception> = IllegalArgumentException::class,
+    /**
+     * Default values that this mapper uses when calling mapping methods of other mappers that have [PassOnParameter]s.
+     */
+    val defaultPassOnParameters: Array<DefaultPassOnParameter> = []
 )
