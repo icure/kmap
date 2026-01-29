@@ -417,5 +417,10 @@ annotation class Mapping(
      *
      * @see MappingControl
      */
-    val mappingControl: KClass<out Annotation> = MappingControl::class
+    val mappingControl: KClass<out Annotation> = MappingControl::class,
+    /**
+     * If the mapping method has a MappingContextCollector parameter setting this to true will mark the context
+     * required for the execution of this mapping.
+     */
+    val requireMappingContext: Boolean = false
 )

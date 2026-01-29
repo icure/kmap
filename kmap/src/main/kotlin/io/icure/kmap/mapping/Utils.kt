@@ -69,6 +69,7 @@ internal fun KSAnnotation.mappingsMappings() =
 				source = annotation.arguments.find { arg -> arg.name?.asString() == "source" }?.value as? String,
 				ignore = annotation.arguments.find { arg -> arg.name?.asString() == "ignore" }?.value as? Boolean ?: false,
 				expression = annotation.arguments.find { arg -> arg.name?.asString() == "expression" }?.value as? String,
+				requireMappingContext = annotation.arguments.find { arg -> arg.name?.asString() == "requireMappingContext" }?.value as? Boolean ?: false,
 			)
 		}
 	} ?: emptyList()

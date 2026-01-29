@@ -44,7 +44,8 @@ internal class MappingContextAnnotationDetails private constructor (
 	/**
 	 * Additional imports required for this MappingContextCollector to work.
 	 */
-	val additionalImports: List<String>
+	val additionalImports: List<String>,
+	private val invokeOnlyOnExplicitRequirement: Boolean,
 ) {
 	companion object {
 		fun fromAnnotation(annotation: KSAnnotation): MappingContextAnnotationDetails {
@@ -65,43 +66,62 @@ internal class MappingContextAnnotationDetails private constructor (
 				beforeEnteringMapEntry = beforeEnteringMapEntry,
 				afterExitingMapEntry = afterExitingMapEntry,
 				additionalImports = additionalImports,
+				invokeOnlyOnExplicitRequirement = annotation.arguments.first { it.name!!.asString() == "invokeOnlyOnExplicitRequirement" }.value as Boolean
 			)
 		}
 	}
 
 	fun afterExitingProperty(
 		contextCollectorRef: String,
-		propertyNameRef: String
-	): String? = afterExitingProperty?.replace("%X", contextCollectorRef)?.replace("%P", propertyNameRef)
+		propertyNameRef: String,
+		requiredExplicitly: Boolean
+	): String? = if (!invokeOnlyOnExplicitRequirement || requiredExplicitly) {
+		afterExitingProperty?.replace("%X", contextCollectorRef)?.replace("%P", propertyNameRef)
+	} else null
 
 	fun beforeEnteringProperty(
 		contextCollectorRef: String,
-		propertyNameRef: String
-	): String? = beforeEnteringProperty?.replace("%X", contextCollectorRef)?.replace("%P", propertyNameRef)
+		propertyNameRef: String,
+		requiredExplicitly: Boolean
+	): String? = if (!invokeOnlyOnExplicitRequirement || requiredExplicitly) {
+		beforeEnteringProperty?.replace("%X", contextCollectorRef)?.replace("%P", propertyNameRef)
+	} else null
 
 	fun afterExitingListItem(
 		contextCollectorRef: String,
-		indexRef: String
-	): String? = afterExitingListItem?.replace("%X", contextCollectorRef)?.replace("%I", indexRef)
+		indexRef: String,
+		requiredExplicitly: Boolean
+	): String? = if (!invokeOnlyOnExplicitRequirement || requiredExplicitly) {
+		afterExitingListItem?.replace("%X", contextCollectorRef)?.replace("%I", indexRef)
+	} else null
 
 	fun beforeEnteringListItem(
 		contextCollectorRef: String,
-		indexRef: String
-	): String? = beforeEnteringListItem?.replace("%X", contextCollectorRef)?.replace("%I", indexRef)
+		indexRef: String,
+		requiredExplicitly: Boolean
+	): String? = if (!invokeOnlyOnExplicitRequirement || requiredExplicitly) {
+		beforeEnteringListItem?.replace("%X", contextCollectorRef)?.replace("%I", indexRef)
+	} else null
 
 	fun afterExitingMapEntry(
 		contextCollectorRef: String,
-		keyRef: String
-	): String? = afterExitingMapEntry?.replace("%X", contextCollectorRef)?.replace("%K", keyRef)
+		keyRef: String,
+		requiredExplicitly: Boolean
+	): String? = if (!invokeOnlyOnExplicitRequirement || requiredExplicitly) {
+		afterExitingMapEntry?.replace("%X", contextCollectorRef)?.replace("%K", keyRef)
+	} else null
 
 	fun beforeEnteringMapEntry(
 		contextCollectorRef: String,
-		keyRef: String
-	): String? = beforeEnteringMapEntry?.replace("%X", contextCollectorRef)?.replace("%K", keyRef)
+		keyRef: String,
+		requiredExplicitly: Boolean
+	): String? = if (!invokeOnlyOnExplicitRequirement || requiredExplicitly) {
+		beforeEnteringMapEntry?.replace("%X", contextCollectorRef)?.replace("%K", keyRef)
+	} else null
 }
 
 internal class ContextCollectorDetails(
 	val name: String,
 	val type: KSType,
-	val annotationDetails: MappingContextAnnotationDetails
+	val annotationDetails: MappingContextAnnotationDetails,
 )

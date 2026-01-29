@@ -49,5 +49,19 @@ annotation class MappingContextCollector(
 	/**
 	 * Additional imports required for this MappingContextCollector to work.
 	 */
-	val additionalImports: Array<String> = []
+	val additionalImports: Array<String> = [],
+	/**
+	 * Add the code to invoke this MappingContextCollector only when there is an explicit requirement to use the context.
+	 * This is the case when:
+	 * - A parameter has a [Mapping] with [Mapping.requireMappingContext] true, or
+	 * - A parameter mapping function has a parameter of this MappingContextCollector type
+	 */
+	val invokeOnlyOnExplicitRequirement: Boolean = false,
 )
+/*TODO
+ * Current system of invokeOnlyOnExplicitRequirement and defaults works good enough for now, but might need to change
+ * how to handle in the future. Current behavior, that might not be good enough for all use-cases:
+ * - If a mapping function is using a default context then the various before/after entering/exiting is never generated
+ *   on that mapping: the default value is just passed as is.
+ * - The default value is one per mapper, not per mapping function invocation. This only works if the default value is stateless.
+ */
