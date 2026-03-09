@@ -11,6 +11,7 @@ import com.google.devtools.ksp.symbol.KSType
 import com.google.devtools.ksp.symbol.KSTypeReference
 import com.google.devtools.ksp.symbol.KSValueParameter
 import com.google.devtools.ksp.symbol.KSVisitorVoid
+import com.google.devtools.ksp.symbol.Modifier
 import com.google.devtools.ksp.symbol.Nullability
 import com.google.devtools.ksp.validate
 import com.squareup.kotlinpoet.AnnotationSpec
@@ -156,7 +157,12 @@ class MapperVisitor(
 
 									addFunction(
 										FunSpec.builder(funDecl.simpleName.asString())
-											.addModifiers(KModifier.OVERRIDE)
+											.addModifiers(
+												listOfNotNull(
+													KModifier.OVERRIDE,
+													if (Modifier.SUSPEND in funDecl.modifiers) KModifier.SUSPEND else null
+												)
+											)
 											.addTypeVariables(funDecl.typeParameters.map { it.toTypeVariableName() })
 											.addParameter(param.name!!.asString(), param.type.toResolvedTypeName())
 											.apply {
