@@ -40,5 +40,8 @@ jobs:
           echo "mavenReleasesRepository=${MAVEN_RELEASE_REPOSITORY}" >> ~/.gradle/gradle.properties
           echo "mavenSnapshotsRepository=${MAVEN_SNAPSHOT_REPOSITORY}" >> ~/.gradle/gradle.properties
 
+      - name: Print git version
+        run: gradle :kmap:printGitVersion -x test
+
       - name: Publish
         run: gradle :kmap:publish -x test
