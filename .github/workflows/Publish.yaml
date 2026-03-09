@@ -8,13 +8,15 @@ on:
       - 'main'
 jobs:
   publish:
-    name: Test
+    name: Publish
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     steps:
       - name: checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          ref: 'main'
+          fetch-tags: true
 
       - name: Setup JDK
         uses: actions/setup-java@v5
