@@ -20,7 +20,6 @@ version = gitVersion ?: "0.0.1-SNAPSHOT"
 
 dependencies {
     implementation(libs.bundles.kotlinPoet)
-    implementation(libs.bundles.logback)
     implementation(libs.bundles.slf4j)
 
     implementation(libs.kotlinKsp)
