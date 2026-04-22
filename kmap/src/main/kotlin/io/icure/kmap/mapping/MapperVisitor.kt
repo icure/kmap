@@ -500,6 +500,22 @@ class MapperVisitor(
 					}
 
 					sourceDecl.classKind == ClassKind.ENUM_CLASS && targetDecl.classKind == ClassKind.ENUM_CLASS && !sourceIsNullable -> {
+						val sourceEntries = sourceDecl.declarations.filter { it.simpleName.asString() != "<init>" && (it as? KSClassDeclaration)?.classKind == ClassKind.ENUM_ENTRY }.map { it.simpleName.asString() }.toSet()
+						val targetEntries = targetDecl.declarations.filter { it.simpleName.asString() != "<init>" && (it as? KSClassDeclaration)?.classKind == ClassKind.ENUM_ENTRY }.map { it.simpleName.asString() }.toSet()
+						if (sourceEntries != targetEntries) {
+							val onlyInSource = sourceEntries - targetEntries
+							val onlyInTarget = targetEntries - sourceEntries
+							logger.error(
+								"Enum mismatch mapping ${sourceDecl.qualifiedName?.asString()} -> ${targetDecl.qualifiedName?.asString()}: " +
+								(if (onlyInSource.isNotEmpty()) "entries only in source: $onlyInSource" else "") +
+								(if (onlyInSource.isNotEmpty() && onlyInTarget.isNotEmpty()) ", " else "") +
+								(if (onlyInTarget.isNotEmpty()) "entries only in target: $onlyInTarget" else "")
+							)
+							return TypeConverterInfo(
+								buildCodeBlock { add("KMap error, check logs") },
+								explicitRequireCtx
+							)
+						}
 						return TypeConverterInfo(
 							buildCodeBlock { add("%T.valueOf($paramName.name)", targetDecl.toClassName()) },
 							explicitRequireCtx
@@ -514,6 +530,7 @@ class MapperVisitor(
 					}
 
 					sourceDecl.isString() && targetDecl.classKind == ClassKind.ENUM_CLASS && !sourceIsNullable -> {
+						logger.warn("Unsafe map of enum from string for ${targetDecl.qualifiedName}")
 						return TypeConverterInfo(
 							buildCodeBlock { add("%L.valueOf($paramName)", targetDecl.toClassName()) },
 							explicitRequireCtx
